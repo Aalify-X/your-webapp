@@ -2,364 +2,23 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import os
 import json
 from werkzeug.utils import secure_filename
-# import rei  # Commented out due to import error
 from datetime import datetime
 import uuid
-import shutil
-from pdf_utils import PDFProcessor
-import pdfplumber
-from transformers import pipeline  # Make sure you have transformers installed
-import time
-import nltk
-import random
-import base64
-import PyPDF2
-import nltk
-from nltk.tokenize import sent_tokenize, word_tokenize
-from nltk.corpus import stopwords
-import re
 import logging
 
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.urandom(24)
 
-# Download required NLTK data
-try:
-    import nltk
-    nltk.download('punkt')
-    nltk.download('averaged_perceptron_tagger')
-    nltk.download('stopwords')
-    nltk.download('punkt_tab')
-except Exception as e:
-    print(f"Error downloading NLTK data: {e}")
+app.config['UPLOAD_FOLDER'] = '/tmp/uploads'  
 
-# Ensure NLTK resources are downloaded
-try:
-    nltk.download('punkt', quiet=True)
-    nltk.download('stopwords', quiet=True)
-except Exception as e:
-    logging.error(f"NLTK download error: {e}")
-
-# Configuration
-app.config['ALLOWED_PDF_EXTENSIONS'] = {'pdf'}
-app.config['ALLOWED_IMAGE_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['WHITEBOARD_IMAGES_FOLDER'] = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard_images')
-
-# Create necessary directories
 def ensure_upload_directories():
-    """Ensure all required upload directories exist."""
-    directories = [
-        app.config['UPLOAD_FOLDER'],
-        app.config['WHITEBOARD_IMAGES_FOLDER'],
-        os.path.join(app.config['UPLOAD_FOLDER'], 'pdf'),
-        os.path.join(app.config['UPLOAD_FOLDER'], 'images')
-    ]
-    for directory in directories:
-        try:
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-        except Exception as e:
-            print(f"Error creating directory {directory}: {e}")
-            raise
-
-# Call this function when the app starts
-ensure_upload_directories()
-
-def allowed_file(filename):
-    """
-    Check if the file extension is allowed.
-    
-    Args:
-        filename (str): Name of the file to check
-    
-    Returns:
-        bool: True if file is allowed, False otherwise
-    """
-    if not filename or '.' not in filename:
-        return False
-    
-    ext = filename.rsplit('.', 1)[1].lower()
-    
-    # Determine allowed extensions based on current route
-    if request.endpoint in ['upload_pdf', 'pdf_summary_post', 'process_pdf']:
-        return ext in app.config['ALLOWED_PDF_EXTENSIONS']
-    elif request.endpoint in ['upload_whiteboard_image', 'save_whiteboard']:
-        return ext in app.config['ALLOWED_IMAGE_EXTENSIONS']
-    
-    return False
-
-# Default theme settings
-DEFAULT_THEME = {
-    'color': '#0078d7',
-    'font': 'Arial',
-    'size': '16',
-    'background_color': '#f4f4f9',
-    'text_color': '#333333',
-    'button_color': '#0078d7',
-    'button_hover_color': '#005bb5',
-    'button_text_color': '#ffffff',
-    'card_background_color': '#ffffff',
-    'border_color': '#e0e0e0'
-}
-
-def save_theme_data(theme_data):
-    """Save theme data to a JSON file"""
-    theme_file = os.path.join(app.root_path, 'static', 'theme.json')
-    os.makedirs(os.path.dirname(theme_file), exist_ok=True)
-    with open(theme_file, 'w') as f:
-        json.dump(theme_data, f)
-
-def load_theme_data():
-    """Load theme data from JSON file"""
-    theme_file = os.path.join(app.root_path, 'static', 'theme.json')
-    if os.path.exists(theme_file):
-        with open(theme_file, 'r') as f:
-            return json.load(f)
-    return {
-        'color': '#0078d7',
-        'background_color': '#f4f4f9',
-        'text_color': '#333333',
-        'button_color': '#0078d7',
-        'button_hover_color': '#005bb5',
-        'button_text_color': '#ffffff',
-        'font': 'Arial'
-    }
-
-@app.context_processor
-def inject_theme_data():
-    """Inject theme data into all templates"""
-    theme_data = session.get('theme_data') or load_theme_data()
-    return {'theme_data': theme_data}
-
-@app.route('/settings', methods=['GET'])
-def settings():
-    theme_data = session.get('theme_data', {
-        'banner_color': '#FFB6C1',
-        'background_color': '#FFF5F5',
-        'button_color': '#FF69B4'
-    })
-    return render_template('settings.html', theme_data=theme_data)
-
-@app.route('/save_theme', methods=['POST'])
-def save_theme():
-    # Cycle through predefined themes
-    themes = [
-        {
-            'banner_color': '#FFB6C1',
-            'background_color': '#FFF5F5',
-            'button_color': '#FF69B4',
-            'text_color': '#333'
-        },
-        {
-            'banner_color': '#4169E1',
-            'background_color': '#F0F8FF',
-            'button_color': '#1E90FF',
-            'text_color': '#000'
-        },
-        {
-            'banner_color': '#2E8B57',
-            'background_color': '#F0FFF0',
-            'button_color': '#3CB371',
-            'text_color': '#333'
-        }
-    ]
-
-    # Get current theme or default to first theme
-    current_theme = session.get('theme_data', themes[0])
-    current_index = next((i for i, theme in enumerate(themes) if theme == current_theme), -1)
-    
-    # Cycle to next theme
-    next_index = (current_index + 1) % len(themes)
-    next_theme = themes[next_index]
-    
-    # Update session
-    session['theme_data'] = next_theme
-    
-    return jsonify(next_theme)
-
-@app.before_request
-def before_request():
-    # Set default theme if not present
-    if 'theme_data' not in session:
-        session['theme_data'] = {
-            'banner_color': '#FFB6C1',
-            'background_color': '#FFF5F5',
-            'button_color': '#FF69B4'
-        }
-    g.theme_data = session['theme_data']
-
-def clean_text(text):
-    """
-    Clean and preprocess text for better processing.
-    
-    Args:
-        text (str): Input text to clean
-    
-    Returns:
-        str: Cleaned and normalized text
-    """
-    # Remove special characters and digits
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-    
-    # Convert to lowercase
-    text = text.lower()
-    
-    # Remove extra whitespaces
-    text = ' '.join(text.split())
-    
-    return text
-
-def extract_meaningful_sentences(text, min_words=6, max_words=50):
-    """
-    Extract meaningful sentences based on word count.
-    
-    Args:
-        text (str): Input text
-        min_words (int): Minimum number of words in a sentence
-        max_words (int): Maximum number of words in a sentence
-    
-    Returns:
-        list: List of meaningful sentences
-    """
-    sentences = sent_tokenize(text)
-    stop_words = set(stopwords.words('english'))
-    
-    meaningful_sentences = []
-    for sentence in sentences:
-        words = word_tokenize(sentence)
-        filtered_words = [word for word in words if word.lower() not in stop_words]
-        
-        if min_words <= len(filtered_words) <= max_words:
-            meaningful_sentences.append(sentence)
-    
-    return meaningful_sentences
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    handlers=[
-                        logging.FileHandler('pdf_processing.log'),
-                        logging.StreamHandler()
-                    ])
-
-def process_pdf(file_path, num_points=10, num_questions=5):
-    """
-    Process PDF file and extract key information with comprehensive error handling.
-    
-    Args:
-        file_path (str): Path to the PDF file
-        num_points (int): Number of summary points to generate
-        num_questions (int): Number of questions to generate
-    
-    Returns:
-        dict: Processed PDF information
-    """
-    # Validate inputs
-    if not isinstance(num_points, int) or num_points <= 0:
-        num_points = 10
-    if not isinstance(num_questions, int) or num_questions <= 0:
-        num_questions = 5
-
+    """Ensure upload directory exists."""
     try:
-        # Validate file exists and is readable
-        if not os.path.exists(file_path):
-            logging.error(f"PDF file not found: {file_path}")
-            return {
-                'success': False,
-                'error': 'PDF file not found'
-            }
-        
-        # Check file size (limit to 50MB)
-        max_file_size = 50 * 1024 * 1024  # 50 MB
-        file_size = os.path.getsize(file_path)
-        if file_size > max_file_size:
-            logging.warning(f"PDF file too large: {file_size} bytes")
-            return {
-                'success': False,
-                'error': 'PDF file is too large (max 50MB)'
-            }
-        
-        # Open the PDF file
-        try:
-            with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                
-                # Extract text from all pages
-                full_text = ""
-                for page in pdf_reader.pages:
-                    page_text = page.extract_text() or ""
-                    full_text += page_text + "\n"
-        except Exception as read_error:
-            logging.error(f"Error reading PDF: {read_error}")
-            return {
-                'success': False,
-                'error': f'Error reading PDF: {str(read_error)}'
-            }
-        
-        # Validate extracted text
-        if not full_text.strip():
-            logging.warning("No text extracted from PDF")
-            return {
-                'success': False,
-                'error': 'No text could be extracted from the PDF'
-            }
-        
-        # Clean the extracted text
-        try:
-            cleaned_text = clean_text(full_text)
-        except Exception as clean_error:
-            logging.error(f"Error cleaning text: {clean_error}")
-            cleaned_text = full_text
-        
-        # Extract meaningful sentences
-        try:
-            sentences = extract_meaningful_sentences(full_text)
-        except Exception as sentence_error:
-            logging.error(f"Error extracting sentences: {sentence_error}")
-            sentences = full_text.split('.')[:num_points]
-        
-        # Validate sentences
-        if not sentences:
-            logging.warning("Could not extract meaningful sentences")
-            return {
-                'success': False,
-                'error': 'Could not extract meaningful sentences from the PDF'
-            }
-        
-        # Generate summary points
-        summary_points = sentences[:num_points]
-        
-        # Generate questions 
-        questions = [
-            f"What is the main idea behind: {sentence}?"
-            for sentence in sentences[:num_questions]
-        ]
-        
-        # Log successful processing
-        logging.info(f"Successfully processed PDF: {os.path.basename(file_path)}")
-        
-        return {
-            'success': True,
-            'text_length': len(full_text),
-            'summary_points': summary_points,
-            'questions': questions,
-            'file_name': os.path.basename(file_path)
-        }
-    
-    except Exception as unexpected_error:
-        logging.error(f"Unexpected PDF processing error: {unexpected_error}", exc_info=True)
-        return {
-            'success': False,
-            'error': str(unexpected_error)
-        }
-    finally:
-        # Attempt to remove the temporary file
-        try:
-            os.remove(file_path)
-        except Exception as cleanup_error:
-            logging.warning(f"Could not delete temporary PDF file: {cleanup_error}")
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    except Exception as e:
+        logging.error(f"Error creating upload directory: {e}")
+
+ensure_upload_directories()
 
 @app.route('/')
 def index():
@@ -503,7 +162,7 @@ def upload_whiteboard_image():
             return jsonify({'error': 'Invalid file type. Allowed types: png, jpg, jpeg, gif'}), 400
             
         filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['WHITEBOARD_IMAGES_FOLDER'], filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard_images', filename)
         
         try:
             file.save(filepath)
@@ -595,7 +254,7 @@ def save_whiteboard():
             
         # Generate a unique filename
         filename = f'whiteboard_{int(time.time())}.png'
-        filepath = os.path.join(app.config['WHITEBOARD_IMAGES_FOLDER'], filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard_images', filename)
         
         # Save the image data
         image_data = data['imageData'].split(',')[1]  # Remove the data URL prefix
