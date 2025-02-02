@@ -15,5 +15,10 @@
             "src": "/(.*)",
             "dest": "wsgi.py"
         }
-    ]
+    ],
+    "env": {
+        "FLASK_ENV": "production",
+        "FLASK_DEBUG": "false",
+        "SECRET_KEY": "@my_web_app_secret_key"
+    }
 }

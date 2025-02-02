@@ -5,10 +5,30 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import uuid
 import logging
+import sys
+import base64
+import time
+from dotenv import load_dotenv
 
-app = Flask(__name__, static_folder='static')
-app.secret_key = os.urandom(24)
+# Load environment variables
+load_dotenv()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__, 
+            static_folder='static', 
+            template_folder='templates')
+
+# Configure app using environment variables
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24))
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+app.config['ENV'] = os.getenv('FLASK_ENV', 'production')
 app.config['UPLOAD_FOLDER'] = '/tmp/uploads'  
 
 def ensure_upload_directories():
@@ -279,4 +299,4 @@ def internal_error(e):
     return render_template('500.html'), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=app.config['DEBUG'])
