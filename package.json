@@ -1,15 +1,15 @@
 {
   "name": "my-web-app",
   "version": "1.0.0",
-  "description": "Productivity web application",
-  "main": "app.py",
+  "description": "Flask web application",
+  "main": "wsgi.py",
   "engines": {
     "node": "18.x"
   },
   "scripts": {
-    "start": "flask run"
+    "start": "python wsgi.py"
   },
-  "keywords": ["productivity", "web-app", "flask"],
+  "keywords": ["flask", "web-app"],
   "author": "Aalify-X",
   "license": "MIT"
 }
