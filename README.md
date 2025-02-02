@@ -1,18 +1,40 @@
-<<<<<<< HEAD
-# Web App Project
+# My Web App
 
-This is a simple web app that [brief description of your app's purpose].
+## Overview
+A productivity-focused web application designed to enhance study and note-taking experience.
 
 ## Features
-- [Feature 1]
-- [Feature 2]
-- [Feature 3]
+- Interactive whiteboard
+- Sticky notes
+- Study assistant functionality
 
-## How to Run Locally
+## Technologies
+- Flask
+- Python
+- HTML/CSS
+- Deployed on Vercel
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/your-username/your-repo-name.git
-=======
-# my-web-app
->>>>>>> 4fbaffc3f038bc300e26f72d202369c6c3e707ff
+## Local Development
+1. Clone the repository
+2. Create a virtual environment
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+3. Install dependencies
+   ```
+   pip install -r requirements.txt
+   ```
+4. Run the application
+   ```
+   flask run
+   ```
+
+## Deployment
+Deployed automatically via Vercel integration with GitHub.
+
+## Contributing
+Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
+
+## License
+This project is licensed under the MIT License - see the LICENSE.md file for details.

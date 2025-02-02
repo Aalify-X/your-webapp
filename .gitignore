@@ -1,7 +1,29 @@
+# Python
 __pycache__/
-*.pyc
-.env
-uploads/
-*.log
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Vercel
+.vercel/
+
+# IDE
 .vscode/
+.idea/
+
+# Misc
 .DS_Store
+*.log
+*.swp
+
+# Virtual Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
