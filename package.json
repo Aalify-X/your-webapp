@@ -6,6 +6,6 @@
     "node": "18.x"
   },
   "scripts": {
-    "start": "gunicorn wsgi:application"
+    "start": "gunicorn wsgi:main"
   }
 }

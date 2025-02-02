@@ -10,16 +10,16 @@ import base64
 import time
 from dotenv import load_dotenv
 import secrets
+import traceback
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
-)
+def log_error(message):
+    print(message, file=sys.stderr)
+    sys.stderr.flush()
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, 
@@ -49,25 +49,36 @@ def ensure_upload_directories():
     try:
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     except Exception as e:
-        logging.error(f"Error creating upload directory: {e}")
+        log_error(f"Error creating upload directory: {e}")
+        log_error(traceback.format_exc())
 
 ensure_upload_directories()
 
 @app.route('/')
 def index():
-    theme_data = session.get('theme_data', {
-        'banner_color': '#FFB6C1',
-        'background_color': '#FFF5F5',
-        'button_color': '#FF69B4'
-    })
-    return render_template('index.html', theme_data=theme_data)
+    try:
+        theme_data = session.get('theme_data', {
+            'banner_color': '#FFB6C1',
+            'background_color': '#FFF5F5',
+            'button_color': '#FF69B4'
+        })
+        return render_template('index.html', theme_data=theme_data)
+    except Exception as e:
+        log_error(f"Error in index route: {e}")
+        log_error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/pdf_summary', methods=['GET'])
 def pdf_summary():
     """
     Render the PDF summary page.
     """
-    return render_template('pdf_summary.html')
+    try:
+        return render_template('pdf_summary.html')
+    except Exception as e:
+        log_error(f"Error in pdf_summary route: {e}")
+        log_error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/process_pdf', methods=['POST'])
 def pdf_summary_post():
@@ -121,7 +132,8 @@ def pdf_summary_post():
         try:
             os.remove(filepath)
         except Exception as cleanup_error:
-            logging.warning(f"Could not delete temporary PDF file: {cleanup_error}")
+            log_error(f"Could not delete temporary PDF file: {cleanup_error}")
+            log_error(traceback.format_exc())
         
         if result['success']:
             return jsonify({
@@ -146,7 +158,8 @@ def pdf_summary_post():
         }), 400
     
     except Exception as e:
-        logging.error(f"Unexpected error in PDF summary: {e}", exc_info=True)
+        log_error(f"Unexpected error in PDF summary: {e}")
+        log_error(traceback.format_exc())
         return jsonify({
             'error': 'Internal Server Error',
             'details': str(e),
@@ -173,11 +186,15 @@ def upload_pdf():
         try:
             file.save(filepath)
         except Exception as e:
+            log_error(f"Error saving file: {e}")
+            log_error(traceback.format_exc())
             return jsonify({'error': f'Error saving file: {str(e)}'}), 500
             
         return jsonify({'success': True, 'filepath': filepath})
         
     except Exception as e:
+        log_error(f"Server error: {e}")
+        log_error(traceback.format_exc())
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/upload_whiteboard_image', methods=['POST'])
@@ -200,82 +217,111 @@ def upload_whiteboard_image():
         try:
             file.save(filepath)
         except Exception as e:
+            log_error(f"Error saving image: {e}")
+            log_error(traceback.format_exc())
             return jsonify({'error': f'Error saving image: {str(e)}'}), 500
             
         return jsonify({'success': True, 'filepath': filepath})
         
     except Exception as e:
+        log_error(f"Server error: {e}")
+        log_error(traceback.format_exc())
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/flashcards', methods=['GET', 'POST'])
 def flashcards_view():
-    theme_data = session.get('theme_data', {
-        'banner_color': '#FFB6C1',
-        'background_color': '#FFF5F5',
-        'button_color': '#FF69B4'
-    })
-    if 'flashcards' not in session:
-        session['flashcards'] = []
-        
-    if request.method == 'POST':
-        front = request.form.get('front')
-        back = request.form.get('back')
-        
-        if front and back:  # Only add if both fields are filled
-            session['flashcards'] = session.get('flashcards', []) + [{
-                'front': front,
-                'back': back
-            }]
+    try:
+        theme_data = session.get('theme_data', {
+            'banner_color': '#FFB6C1',
+            'background_color': '#FFF5F5',
+            'button_color': '#FF69B4'
+        })
+        if 'flashcards' not in session:
+            session['flashcards'] = []
             
-            # Save the updated flashcards list to session
-            session.modified = True
+        if request.method == 'POST':
+            front = request.form.get('front')
+            back = request.form.get('back')
             
-            return jsonify({
-                'status': 'success',
-                'message': 'Flashcard created successfully',
-                'flashcard': {'front': front, 'back': back}
-            })
-        else:
-            return jsonify({
-                'status': 'error',
-                'message': 'Both front and back are required'
-            }), 400
-            
-    return render_template('flashcards.html', 
-                         flashcards=session.get('flashcards', []), theme_data=theme_data)
+            if front and back:  # Only add if both fields are filled
+                session['flashcards'] = session.get('flashcards', []) + [{
+                    'front': front,
+                    'back': back
+                }]
+                
+                # Save the updated flashcards list to session
+                session.modified = True
+                
+                return jsonify({
+                    'status': 'success',
+                    'message': 'Flashcard created successfully',
+                    'flashcard': {'front': front, 'back': back}
+                })
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Both front and back are required'
+                }), 400
+                
+        return render_template('flashcards.html', 
+                             flashcards=session.get('flashcards', []), theme_data=theme_data)
+    except Exception as e:
+        log_error(f"Error in flashcards route: {e}")
+        log_error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/delete_flashcard/<int:index>', methods=['POST'])
 def delete_flashcard(index):
-    if 'flashcards' in session and 0 <= index < len(session['flashcards']):
-        session['flashcards'].pop(index)
-        session.modified = True
-        return jsonify({'status': 'success'})
-    return jsonify({'status': 'error'}), 404
+    try:
+        if 'flashcards' in session and 0 <= index < len(session['flashcards']):
+            session['flashcards'].pop(index)
+            session.modified = True
+            return jsonify({'status': 'success'})
+        return jsonify({'status': 'error'}), 404
+    except Exception as e:
+        log_error(f"Error in delete_flashcard route: {e}")
+        log_error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/study_planner', methods=['GET', 'POST'])
 def study_planner_view():
-    theme_data = session.get('theme_data', {
-        'banner_color': '#FFB6C1',
-        'background_color': '#FFF5F5',
-        'button_color': '#FF69B4'
-    })
-    if request.method == 'POST':
-        session['study_plan'] = request.form.get('study_plan')
-    return render_template('study_planner.html', theme_data=theme_data)
+    try:
+        theme_data = session.get('theme_data', {
+            'banner_color': '#FFB6C1',
+            'background_color': '#FFF5F5',
+            'button_color': '#FF69B4'
+        })
+        if request.method == 'POST':
+            session['study_plan'] = request.form.get('study_plan')
+        return render_template('study_planner.html', theme_data=theme_data)
+    except Exception as e:
+        log_error(f"Error in study_planner route: {e}")
+        log_error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/advanced_notes')
 def advanced_notes():
-    return redirect(url_for('whiteboard'))
+    try:
+        return redirect(url_for('whiteboard'))
+    except Exception as e:
+        log_error(f"Error in advanced_notes route: {e}")
+        log_error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/whiteboard')
 def whiteboard():
-    theme_data = session.get('theme_data', {
-        'banner_color': '#FFB6C1',
-        'background_color': '#FFF5F5',
-        'button_color': '#FF69B4'
-    })
-    """Render the whiteboard page."""
-    return render_template('whiteboard.html', theme_data=theme_data)
+    try:
+        theme_data = session.get('theme_data', {
+            'banner_color': '#FFB6C1',
+            'background_color': '#FFF5F5',
+            'button_color': '#FF69B4'
+        })
+        """Render the whiteboard page."""
+        return render_template('whiteboard.html', theme_data=theme_data)
+    except Exception as e:
+        log_error(f"Error in whiteboard route: {e}")
+        log_error(traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/whiteboard/save', methods=['POST'])
 def save_whiteboard():
@@ -299,17 +345,28 @@ def save_whiteboard():
             'url': url_for('static', filename=f'uploads/whiteboard_images/{filename}')
         })
     except Exception as e:
-        print(f"Error saving whiteboard: {str(e)}")
+        log_error(f"Error saving whiteboard: {e}")
+        log_error(traceback.format_exc())
         return jsonify({'success': False, 'error': str(e)})
 
 # Error handlers
 @app.errorhandler(404)
-def page_not_found(e):
+def not_found(error):
+    log_error(f"404 error: {error}")
     return render_template('404.html'), 404
 
 @app.errorhandler(500)
-def internal_error(e):
+def server_error(error):
+    log_error(f"500 error: {error}")
+    log_error(traceback.format_exc())
     return render_template('500.html'), 500
 
+# Catch any unhandled exceptions
+@app.errorhandler(Exception)
+def handle_exception(e):
+    log_error(f"Unhandled exception: {e}")
+    log_error(traceback.format_exc())
+    return jsonify({"error": "Unexpected error occurred"}), 500
+
 if __name__ == '__main__':
-    app.run(debug=app.config['DEBUG'])
+    app.run(debug=False)
