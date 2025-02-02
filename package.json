@@ -1,11 +1,5 @@
 {
-  "name": "my-web-app",
+  "name": "vercel-app",
   "version": "1.0.0",
-  "main": "wsgi.py",
-  "engines": {
-    "node": "18.x"
-  },
-  "scripts": {
-    "start": "gunicorn wsgi:main"
-  }
+  "main": "wsgi.py"
 }
