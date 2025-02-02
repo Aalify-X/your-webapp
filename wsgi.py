@@ -1,13 +1,11 @@
-import os
 import sys
 import traceback
 import json
 
-# Ensure logging to stderr for Vercel
 def log_error(message):
     print(json.dumps({
         "source": "wsgi.py",
-        "level": "ERROR",
+        "type": "ERROR",
         "message": str(message)
     }), file=sys.stderr)
     sys.stderr.flush()
@@ -15,47 +13,32 @@ def log_error(message):
 try:
     from app import app as application
 except Exception as import_error:
-    log_error(f"Import Error: {import_error}")
+    log_error(f"CRITICAL IMPORT ERROR: {import_error}")
     log_error(traceback.format_exc())
     application = None
 
-def debug_environment():
-    """Log all environment variables and system information."""
-    log_error("--- ENVIRONMENT DEBUG START ---")
-    log_error(f"Python Version: {sys.version}")
-    log_error(f"Python Executable: {sys.executable}")
-    log_error(f"Current Working Directory: {os.getcwd()}")
-    log_error("Environment Variables:")
-    for key, value in os.environ.items():
-        log_error(f"{key}: {value}")
-    log_error("--- ENVIRONMENT DEBUG END ---")
-
-def handle_exception(exc_type, exc_value, exc_traceback):
-    """Log uncaught exceptions."""
-    log_error("Uncaught exception:")
-    log_error(traceback.format_exception(exc_type, exc_value, exc_traceback))
-
-# Set the exception handler
-sys.excepthook = handle_exception
-
-def main(event=None, context=None):
-    debug_environment()
-    
+def handler(event=None, context=None):
+    """Vercel serverless function handler"""
     if application is None:
-        log_error("Application failed to import")
-        raise ImportError("Could not import Flask application")
+        log_error("Application failed to initialize")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': 'Application initialization failed'})
+        }
     
     try:
-        return application
+        # Minimal request handler for Vercel
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'message': 'Application is running'})
+        }
     except Exception as e:
-        log_error(f"Error in main function: {e}")
+        log_error(f"Handler execution error: {e}")
         log_error(traceback.format_exc())
-        raise
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': 'Internal Server Error'})
+        }
 
-if __name__ == "__main__":
-    try:
-        debug_environment()
-        application.run(debug=False)
-    except Exception as e:
-        log_error(f"Startup Error: {e}")
-        log_error(traceback.format_exc())
+# Ensure the handler can be imported
+__handler__ = handler
