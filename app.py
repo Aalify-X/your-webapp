@@ -9,6 +9,7 @@ import sys
 import base64
 import time
 from dotenv import load_dotenv
+import secrets
 
 # Load environment variables
 load_dotenv()
@@ -25,8 +26,20 @@ app = Flask(__name__,
             static_folder='static', 
             template_folder='templates')
 
+# Generate or retrieve secret key
+def get_secret_key():
+    # Try to get from environment variable
+    secret_key = os.getenv('SECRET_KEY')
+    
+    # If not set, generate a secure random key
+    if not secret_key:
+        logger.warning("No SECRET_KEY found. Generating a new one.")
+        secret_key = secrets.token_hex(32)
+    
+    return secret_key
+
 # Configure app using environment variables
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24))
+app.config['SECRET_KEY'] = get_secret_key()
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
 app.config['ENV'] = os.getenv('FLASK_ENV', 'production')
 app.config['UPLOAD_FOLDER'] = '/tmp/uploads'  
