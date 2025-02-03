@@ -8,6 +8,8 @@ import logging
 import sys
 import base64
 import time
+import secrets
+import traceback
 
 # Graceful dotenv import
 try:
@@ -29,14 +31,11 @@ app = Flask(__name__,
 
 # Generate or retrieve secret key
 def get_secret_key():
-    # Try to get from environment variable
+    """Generate or retrieve a secret key."""
     secret_key = os.getenv('SECRET_KEY')
-    
-    # If not set, generate a secure random key
     if not secret_key:
-        logger.warning("No SECRET_KEY found. Generating a new one.")
+        print("No SECRET_KEY found. Generating a new one.", file=sys.stderr)
         secret_key = secrets.token_hex(32)
-    
     return secret_key
 
 # Configure app using environment variables
