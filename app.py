@@ -9,6 +9,12 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from nltk.tag import pos_tag
 import re
+import sys
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Download NLTK data
 nltk.download('punkt')
@@ -40,35 +46,67 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text()
     return text
 
-def get_default_theme():
+def get_theme_data():
     return {
         'banner_color': '#FFB6C1',
-        'background_color': '#FFF5F5',
-        'button_color': '#FF69B4',
-        'text_color': '#333333'
+        'text_color': '#000000',
+        'background_color': '#FFFFFF',
+        # Add any other theme variables you use
     }
 
 @app.before_request
 def before_request():
     # Initialize theme data if not present
     if 'theme_data' not in session:
-        session['theme_data'] = get_default_theme()
+        session['theme_data'] = get_theme_data()
 
 @app.route('/')
 def index():
-    return render_template('index.html', theme_data=session.get('theme_data', get_default_theme()))
+    try:
+        logger.info("Attempting to render index page")
+        return render_template_string("""
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Simple Test</title>
+                </head>
+                <body>
+                    <h1>Hello from Flask on Vercel!</h1>
+                    <p>Python version: {}</p>
+                </body>
+            </html>
+        """.format(sys.version))
+    except Exception as e:
+        logger.error(f"Error in index route: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+@app.route('/debug')
+def debug():
+    try:
+        info = {
+            'python_version': sys.version,
+            'flask_version': Flask.__version__,
+            'debug_mode': app.debug,
+            'env': app.env
+        }
+        return info
+    except Exception as e:
+        return {'error': str(e)}
 
 @app.route('/pdf_summary')
 def pdf_summary():
-    return render_template('pdf_summary.html', theme_data=session.get('theme_data', get_default_theme()))
+    theme_data = get_theme_data()
+    return render_template('pdf_summary.html', theme_data=theme_data)
 
 @app.route('/whiteboard_view')
 def whiteboard_view():
-    return render_template('whiteboard.html', theme_data=session.get('theme_data', get_default_theme()))
+    theme_data = get_theme_data()
+    return render_template('whiteboard.html', theme_data=theme_data)
 
 @app.route('/flashcards')
 def flashcards_view():
-    return render_template('flashcards.html', theme_data=session.get('theme_data', get_default_theme()))
+    theme_data = get_theme_data()
+    return render_template('flashcards.html', theme_data=theme_data)
 
 @app.route('/process_pdf', methods=['POST'])
 def process_pdf():
@@ -198,7 +236,8 @@ def get_whiteboards():
 
 @app.route('/study_planner')
 def study_planner():
-    return render_template('study_planner.html', theme_data=session.get('theme_data', get_default_theme()))
+    theme_data = get_theme_data()
+    return render_template('study_planner.html', theme_data=theme_data)
 
 @app.route('/save_task', methods=['POST'])
 def save_task():
@@ -304,7 +343,7 @@ def update_theme():
 
 @app.route('/get_current_theme')
 def get_current_theme():
-    return jsonify(session.get('theme_data', get_default_theme()))
+    return jsonify(session.get('theme_data', get_theme_data()))
 
 @app.route('/save_schedule', methods=['POST'])
 def save_schedule():
@@ -366,7 +405,7 @@ def upload_pdf():
             return render_template('pdf_summary.html', 
                                 summary=summary, 
                                 filename=pdf_file.filename,
-                                theme_data=session.get('theme_data', get_default_theme()))
+                                theme_data=session.get('theme_data', get_theme_data()))
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
@@ -378,15 +417,25 @@ def generate_summary():
         # Your existing summary generation code...
         return render_template('pdf_summary.html', 
                             summary=summary,
-                            theme_data=session.get('theme_data', get_default_theme()))
+                            theme_data=session.get('theme_data', get_theme_data()))
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Add at the very bottom of your app.py
+@app.errorhandler(404)
+def not_found(e):
+    theme_data = get_theme_data()
+    return render_template('404.html', theme_data=theme_data), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    theme_data = get_theme_data()
+    return render_template('500.html', theme_data=theme_data), 500
+
+# For Vercel
 app.debug = False
 
 if __name__ == '__main__':
     app.run()
 
-# Add this line for Vercel
+# For Vercel Serverless Functions
 app = app
