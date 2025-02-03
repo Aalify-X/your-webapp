@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Study Assistant{% endblock %}</title>
     
-    <style>
-        :root {
-            --banner-color: {{ theme_data.banner_color or '#FFB6C1' }};
-            --background-color: {{ theme_data.background_color or '#FFF5F5' }};
-            --button-color: {{ theme_data.button_color or '#FF69B4' }};
-            --text-color: {{ theme_data.text_color or '#333' }};
-        }
+    <style id="theme-styles">
+    :root {
+        --theme-color: {{ theme_data.banner_color|default('#FFB6C1') }};
+        --background-color: {{ theme_data.background_color|default('#FFF5F5') }};
+        --button-color: {{ theme_data.button_color|default('#FF69B4') }};
+        --text-color: {{ theme_data.text_color|default('#333333') }};
+    }
+    </style>
 
+    <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            transition: background-color 0.3s, color 0.3s;
         }
 
         body {
@@ -27,69 +28,30 @@
             line-height: 1.6;
         }
 
-        .top-banner {
-            background-color: var(--banner-color);
-            color: white;
+        .banner {
+            background-color: var(--theme-color);
+            padding: 15px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1.5rem 2rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        .top-banner::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                45deg, 
-                rgba(255,255,255,0.1), 
-                rgba(255,255,255,0.05)
-            );
-            transform: rotate(-45deg);
-        }
-
-        .app-title {
-            display: flex;
-            align-items: center;
-            color: white;
-            text-decoration: none;
-            font-size: 1.8rem;
+        .banner-title {
+            font-size: 24px;
+            color: var(--text-color);
             font-weight: bold;
-            letter-spacing: 1px;
-            transition: transform 0.3s ease;
-        }
-
-        .app-title:hover {
-            transform: scale(1.05);
-        }
-
-        .app-title span {
-            margin-left: 10px;
-        }
-
-        .theme-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
         }
 
         .theme-button {
             background: rgba(255,255,255,0.2);
             border: none;
             color: white;
-            padding: 10px 15px;
+            padding: 10px 20px;
             border-radius: 25px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: background 0.3s ease;
+            font-size: 1rem;
+            transition: background-color 0.3s;
         }
 
         .theme-button:hover {
@@ -102,79 +64,168 @@
             padding: 0 1rem;
         }
 
-        .back-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: var(--button-color);
+        .back-home {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+
+        .home-btn {
+            padding: 8px 20px;
+            background-color: black;
             color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
+            border-radius: 20px;
             text-decoration: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
-            z-index: 1000;
+            transition: transform 0.3s, opacity 0.3s;
+            font-weight: bold;
+            font-size: 14px;
         }
 
-        .back-button:hover {
+        .home-btn:hover {
             transform: scale(1.05);
+            opacity: 0.8;
         }
 
-        @media (max-width: 768px) {
-            .top-banner {
-                flex-direction: column;
-                align-items: center;
-            }
+        .theme-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+        }
 
-            .app-title {
-                width: 100%;
-                text-align: center;
-                margin-top: 1rem;
-            }
+        .theme-btn {
+            width: 30px;
+            height: 30px;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .theme-btn.active {
+            border-color: #333;
+        }
+
+        /* Theme button colors */
+        .theme-btn.pink { background: #FFB6C1; }
+        .theme-btn.blue { background: #B6D0E2; }
+        .theme-btn.green { background: #98FB98; }
+        .theme-btn.lavender { background: #E6E6FA; }
+
+        /* Add some animation for theme changes */
+        * {
+            transition: background-color 0.3s, color 0.3s;
         }
     </style>
 
     {% block additional_styles %}{% endblock %}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load saved theme on page load
+        fetch('/get_current_theme')
+            .then(response => response.json())
+            .then(theme => {
+                const root = document.documentElement;
+                root.style.setProperty('--theme-color', theme.banner_color);
+                root.style.setProperty('--background-color', theme.background_color);
+                root.style.setProperty('--button-color', theme.button_color);
+                root.style.setProperty('--text-color', theme.text_color);
+            })
+            .catch(error => console.error('Error:', error));
+    });
+
+    function updateTheme(themeName) {
+        fetch('/update_theme', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ theme: themeName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const root = document.documentElement;
+                root.style.setProperty('--theme-color', data.theme.banner_color);
+                root.style.setProperty('--background-color', data.theme.background_color);
+                root.style.setProperty('--button-color', data.theme.button_color);
+                root.style.setProperty('--text-color', data.theme.text_color);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function toggleTheme() {
+        fetch('/save_theme', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.documentElement.style.setProperty('--theme-color', data.banner_color);
+            document.documentElement.style.setProperty('--background-color', data.background_color);
+            document.documentElement.style.setProperty('--button-color', data.button_color);
+            document.documentElement.style.setProperty('--text-color', data.text_color);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    </script>
 </head>
 <body>
-    <div class="top-banner">
-        <a href="index.html" class="app-title">
-            <span>🌸 Study Assistant</span>
-        </a>
-        <div class="theme-controls">
-            <button class="theme-button" onclick="toggleTheme()">
-                🎨 Change Theme
-            </button>
+    <div class="banner">
+        <div class="banner-title">Study Assistant</div>
+        {% if request.endpoint == 'index' %}
+        <div class="theme-selector">
+            <button onclick="updateTheme('pastel_pink')" class="theme-btn pink" title="Pastel Pink"></button>
+            <button onclick="updateTheme('pastel_blue')" class="theme-btn blue" title="Pastel Blue"></button>
+            <button onclick="updateTheme('pastel_green')" class="theme-btn green" title="Pastel Green"></button>
+            <button onclick="updateTheme('lavender')" class="theme-btn lavender" title="Lavender"></button>
         </div>
+        {% endif %}
     </div>
+
+    {% if request.endpoint != 'index' %}
+    <div class="back-home">
+        <a href="{{ url_for('index') }}" class="home-btn">Back to Home</a>
+    </div>
+    {% endif %}
 
     <div class="content">
         {% block content %}{% endblock %}
     </div>
 
-    {% if request.endpoint != 'index' %}
-    <a href="{{ url_for('index') }}" class="back-button">🏠 Back to Home</a>
-    {% endif %}
-
     <script>
         function toggleTheme() {
-            fetch("{{ url_for('save_theme') }}", {
+            fetch('/save_theme', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
             .then(response => response.json())
             .then(data => {
-                document.documentElement.style.setProperty('--banner-color', data.banner_color);
+                document.documentElement.style.setProperty('--theme-color', data.banner_color);
                 document.documentElement.style.setProperty('--background-color', data.background_color);
                 document.documentElement.style.setProperty('--button-color', data.button_color);
                 document.documentElement.style.setProperty('--text-color', data.text_color);
             })
-            .catch(error => console.error('Theme toggle error:', error));
+            .catch(error => console.error('Error:', error));
         }
     </script>
-
-    {% block scripts %}{% endblock %}
 </body>
 </html>

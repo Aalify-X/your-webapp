@@ -1,5 +1,13 @@
 {
   "name": "vercel-app",
   "version": "1.0.0",
-  "main": "wsgi.py"
+  "main": "wsgi.py",
+  "scripts": {
+    "start": "python app.py",
+    "dev": "python app.py --debug",
+    "serve": "gunicorn app:app"
+  },
+  "engines": {
+    "python": "3.9.x"
+  }
 }

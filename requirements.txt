@@ -1,2 +1,5 @@
-flask==2.1.1
-python-dotenv==0.19.2
+flask==2.3.2
+werkzeug==2.3.4
+python-dotenv==1.0.0
+gunicorn==20.1.0
+PyPDF2

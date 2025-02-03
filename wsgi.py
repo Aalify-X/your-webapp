@@ -1,9 +1,12 @@
 from app import app as application
 
 def handler(event=None, context=None):
-    return {
-        'statusCode': 200,
-        'body': 'Application is running'
-    }
+    try:
+        return app(event, context)
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': str(e)
+        }
 
 __handler__ = handler

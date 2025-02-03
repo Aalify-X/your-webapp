@@ -177,15 +177,6 @@
 {% endblock %}
 
 {% block content %}
-<nav>
-    <a href="{{ url_for('index') }}" class="active">Home</a>
-    <a href="{{ url_for('pdf_summary') }}">PDF Assistant</a>
-    <a href="{{ url_for('flashcards_view') }}">Smart Flashcards</a>
-    <a href="{{ url_for('whiteboard') }}">Creative Whiteboard</a>
-    <a href="{{ url_for('study_planner_view') }}">Study Tracker</a>
-    <a href="{{ url_for('settings') }}">Theme</a>
-</nav>
-
 <div class="welcome-message">
     <h1 class="welcome-title">✨ Welcome to Study Assistant ✨</h1>
     <p class="welcome-subtitle">Your adorable study companion that makes learning fun and organized!</p>
@@ -202,26 +193,26 @@
 
     <!-- Smart Flashcards -->
     <div class="feature-card" onclick="window.location.href='{{ url_for('flashcards_view') }}'">
-        <span class="feature-icon">🧠</span>
+        <span class="feature-icon">🎴</span>
         <h2 class="feature-title">Smart Flashcards</h2>
         <p class="feature-description">Create and study with interactive flashcards to boost your memory</p>
         <a href="{{ url_for('flashcards_view') }}" class="feature-button">Create Cards</a>
     </div>
 
     <!-- Creative Whiteboard -->
-    <div class="feature-card" onclick="window.location.href='{{ url_for('whiteboard') }}'">
-        <span class="feature-icon">🎨</span>
-        <h2 class="feature-title">Creative Whiteboard</h2>
-        <p class="feature-description">Express your ideas freely with our Microsoft-style whiteboard</p>
-        <a href="{{ url_for('whiteboard') }}" class="feature-button">Start Drawing</a>
+    <div class="feature-card" onclick="window.location.href='{{ url_for('whiteboard_view') }}'">
+        <span class="feature-icon">✏️</span>
+        <h2 class="feature-title">Create Whiteboard</h2>
+        <p class="feature-description">Draw, sketch, and visualize your ideas with our digital whiteboard</p>
+        <a href="{{ url_for('whiteboard_view') }}" class="feature-button">Start Drawing</a>
     </div>
 
-    <!-- Study Tracker -->
-    <div class="feature-card" onclick="window.location.href='{{ url_for('study_planner_view') }}'">
-        <span class="feature-icon">📝</span>
-        <h2 class="feature-title">Study Tracker</h2>
-        <p class="feature-description">Keep track of your study progress and stay organized</p>
-        <a href="{{ url_for('study_planner_view') }}" class="feature-button">Track Progress</a>
+    <!-- Study Planner -->
+    <div class="feature-card" onclick="window.location.href='{{ url_for('study_planner') }}'">
+        <span class="feature-icon">📅</span>
+        <h2 class="feature-title">Study Planner</h2>
+        <p class="feature-description">Plan and track your study sessions effectively</p>
+        <a href="{{ url_for('study_planner') }}" class="feature-button">Start Planning</a>
     </div>
 </div>
 
