@@ -382,5 +382,11 @@ def generate_summary():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Add at the very bottom of your app.py
+app.debug = False
+
 if __name__ == '__main__':
     app.run()
+
+# Add this line for Vercel
+app = app
