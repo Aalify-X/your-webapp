@@ -4,10 +4,6 @@ import time
 import base64
 from werkzeug.utils import secure_filename
 from pypdf import PdfReader
-import nltk
-from nltk.tokenize import sent_tokenize, word_tokenize
-from nltk.corpus import stopwords
-from nltk.tag import pos_tag
 import re
 import sys
 import logging
@@ -15,20 +11,6 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-# Create a directory in /tmp which is writable
-if not os.path.exists('/tmp/nltk_data'):
-    os.makedirs('/tmp/nltk_data')
-
-# Set NLTK data path to /tmp
-nltk.data.path.append('/tmp/nltk_data')
-
-try:
-    nltk.download('punkt', download_dir='/tmp/nltk_data')
-except:
-    pass  # If download fails, continue anyway
-
-nltk.download('punkt')
 
 # Create Flask app
 app = Flask(__name__)
@@ -72,17 +54,7 @@ def before_request():
 
 @app.route('/')
 def home():
-    return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-            <head>
-                <title>My Web App</title>
-            </head>
-            <body>
-                <h1>Welcome to My Web App</h1>
-            </body>
-        </html>
-    """)
+    return 'PDF Processing API'
 
 @app.route('/api/health')
 def health_check():
@@ -116,49 +88,31 @@ def flashcards_view():
     theme_data = get_theme_data()
     return render_template('flashcards.html', theme_data=theme_data)
 
-@app.route('/process_pdf', methods=['POST'])
+@app.route('/process-pdf', methods=['POST'])
 def process_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not file.filename.endswith('.pdf'):
+        return jsonify({'error': 'File must be a PDF'}), 400
+
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part'}), 400
+        reader = PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
         
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-            
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'pdf', filename)
-            file.save(filepath)
-            
-            # Extract text from PDF
-            text = extract_text_from_pdf(filepath)
-            
-            # Simple processing: split into sentences
-            sentences = nltk.sent_tokenize(text)
-            
-            # Get the requested number of points
-            num_points = min(int(request.form.get('num_points', 30)), 50)
-            summary_points = sentences[:num_points]
-            
-            # Generate simple questions
-            questions = [
-                f"What is the main point of: {sent}?"
-                for sent in sentences[:5]
-            ]
-            
-            # Clean up
-            try:
-                os.remove(filepath)
-            except:
-                pass
-            
-            return render_template('pdf_result.html',
-                                summary=summary_points,
-                                questions=questions,
-                                filename=filename)
+        # Process the text using our simple tokenizer
+        result = simple_tokenize(text)
+        return jsonify(result)
+        
     except Exception as e:
-        return str(e), 500
+        logger.error(f"Error processing PDF: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/create_flashcard', methods=['POST'])
 def create_flashcard():
@@ -452,8 +406,24 @@ def server_error(e):
 # For Vercel
 app.debug = False
 
+def simple_tokenize(text):
+    """Simple tokenizer that splits text into sentences and words"""
+    # Split into sentences (basic implementation)
+    sentences = re.split(r'[.!?]+', text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    
+    # Split into words
+    words = text.replace(',', ' ').split()
+    
+    return {
+        'sentences': sentences,
+        'sentence_count': len(sentences),
+        'word_count': len(words),
+        'text': text
+    }
+
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
 
 # For Vercel Serverless Functions
 app = app
