@@ -3,7 +3,7 @@ import os
 import time
 import base64
 from werkzeug.utils import secure_filename
-import PyPDF2
+from pypdf import PdfReader
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
@@ -41,7 +41,7 @@ def allowed_file(filename):
 def extract_text_from_pdf(pdf_path):
     text = ""
     with open(pdf_path, 'rb') as file:
-        pdf_reader = PyPDF2.PdfReader(file)
+        pdf_reader = PdfReader(file)
         for page in pdf_reader.pages:
             text += page.extract_text()
     return text
@@ -61,24 +61,22 @@ def before_request():
         session['theme_data'] = get_theme_data()
 
 @app.route('/')
-def index():
-    try:
-        logger.info("Attempting to render index page")
-        return render_template_string("""
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>Simple Test</title>
-                </head>
-                <body>
-                    <h1>Hello from Flask on Vercel!</h1>
-                    <p>Python version: {}</p>
-                </body>
-            </html>
-        """.format(sys.version))
-    except Exception as e:
-        logger.error(f"Error in index route: {str(e)}")
-        return f"Error: {str(e)}", 500
+def home():
+    return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>My Web App</title>
+            </head>
+            <body>
+                <h1>Welcome to My Web App</h1>
+            </body>
+        </html>
+    """)
+
+@app.route('/api/health')
+def health_check():
+    return jsonify({"status": "ok"})
 
 @app.route('/debug')
 def debug():
@@ -423,8 +421,18 @@ def generate_summary():
 
 @app.errorhandler(404)
 def not_found(e):
-    theme_data = get_theme_data()
-    return render_template('404.html', theme_data=theme_data), 404
+    return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>404 - Not Found</title>
+            </head>
+            <body>
+                <h1>404 - Page Not Found</h1>
+                <p>The requested page does not exist.</p>
+            </body>
+        </html>
+    """), 404
 
 @app.errorhandler(500)
 def server_error(e):
@@ -439,3 +447,8 @@ if __name__ == '__main__':
 
 # For Vercel Serverless Functions
 app = app
+
+"""
+make some changes and commit again to redeploy or you can also use vercel cli to redeploy
+changing version of nodejs from 22 to 18 solves the 500 internal server error in vercel
+"""
