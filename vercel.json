@@ -6,21 +6,10 @@
             "use": "@vercel/python"
         }
     ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "./app.py"
-        }
-    ],
     "rewrites": [
         {
             "source": "/(.*)",
-            "destination": "/"
+            "destination": "/app.py"
         }
-    ],
-    "env": {
-        "FLASK_ENV": "production",
-        "FLASK_APP": "app.py",
-        "PYTHONUNBUFFERED": "1"
-    }
+    ]
 }
