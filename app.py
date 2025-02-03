@@ -28,6 +28,8 @@ try:
 except:
     pass  # If download fails, continue anyway
 
+nltk.download('punkt')
+
 # Create Flask app
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
