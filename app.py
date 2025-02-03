@@ -16,9 +16,17 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Download NLTK data
-nltk.download('punkt')
-nltk.download('stopwords')
+# Create a directory in /tmp which is writable
+if not os.path.exists('/tmp/nltk_data'):
+    os.makedirs('/tmp/nltk_data')
+
+# Set NLTK data path to /tmp
+nltk.data.path.append('/tmp/nltk_data')
+
+try:
+    nltk.download('punkt', download_dir='/tmp/nltk_data')
+except:
+    pass  # If download fails, continue anyway
 
 # Create Flask app
 app = Flask(__name__)
