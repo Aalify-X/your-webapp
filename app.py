@@ -8,12 +8,13 @@ import logging
 import sys
 import base64
 import time
-from dotenv import load_dotenv
-import secrets
-import traceback
 
-# Load environment variables
-load_dotenv()
+# Graceful dotenv import
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("python-dotenv not installed. Continuing without environment variables.", file=sys.stderr)
 
 # Configure logging
 def log_error(message):
