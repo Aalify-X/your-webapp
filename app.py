@@ -18,14 +18,11 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Configuration
-UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf'}
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Create necessary directories
-os.makedirs(os.path.join(UPLOAD_FOLDER, 'pdf'), exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_FOLDER, 'whiteboard'), exist_ok=True)
 
 def allowed_file(filename):
