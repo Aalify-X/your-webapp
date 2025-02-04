@@ -7,6 +7,7 @@ from pypdf import PdfReader
 import re
 import sys
 import logging
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -101,7 +102,9 @@ def process_pdf():
         return jsonify({'error': 'File must be a PDF'}), 400
 
     try:
-        reader = PdfReader(file)
+        # Read file directly from memory instead of saving to disk
+        file_stream = io.BytesIO(file.read())
+        reader = PdfReader(file_stream)
         text = ""
         for page in reader.pages:
             text += page.extract_text() + "\n"
