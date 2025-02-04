@@ -96,14 +96,12 @@ def process_pdf():
         return jsonify({'error': 'File must be a PDF'}), 400
 
     try:
-        # Read file directly from memory instead of saving to disk
         file_stream = io.BytesIO(file.read())
         reader = PdfReader(file_stream)
         text = ""
         for page in reader.pages:
             text += page.extract_text() + "\n"
         
-        # Process the text using our simple tokenizer
         result = simple_tokenize(text)
         return jsonify(result)
         
@@ -164,17 +162,17 @@ def save_whiteboard():
         data = request.get_json()
         if not data or 'imageData' not in data:
             return jsonify({'error': 'No image data provided'}), 400
-            
-        whiteboard_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard')
-        os.makedirs(whiteboard_dir, exist_ok=True)
-        
-        image_data = data['imageData'].split(',')[1]
+
+        if 'whiteboards' not in session:
+            session['whiteboards'] = []
+
         filename = f'whiteboard_{int(time.time())}.png'
-        filepath = os.path.join(whiteboard_dir, filename)
-        
-        with open(filepath, 'wb') as f:
-            f.write(base64.b64decode(image_data))
-            
+        session['whiteboards'].append({
+            'filename': filename,
+            'data': data['imageData']
+        })
+        session.modified = True
+
         return jsonify({
             'success': True,
             'filepath': filename
@@ -185,11 +183,8 @@ def save_whiteboard():
 @app.route('/get_whiteboards')
 def get_whiteboards():
     try:
-        whiteboard_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard')
-        files = []
-        if os.path.exists(whiteboard_dir):
-            files = [f for f in os.listdir(whiteboard_dir) if f.startswith('whiteboard_')]
-        return jsonify(files)
+        whiteboards = session.get('whiteboards', [])
+        return jsonify([w['filename'] for w in whiteboards])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -405,13 +400,9 @@ app.debug = False
 
 def simple_tokenize(text):
     """Simple tokenizer that splits text into sentences and words"""
-    # Split into sentences (basic implementation)
     sentences = re.split(r'[.!?]+', text)
     sentences = [s.strip() for s in sentences if s.strip()]
-    
-    # Split into words
     words = text.replace(',', ' ').split()
-    
     return {
         'sentences': sentences,
         'sentence_count': len(sentences),
