@@ -22,9 +22,6 @@ ALLOWED_EXTENSIONS = {'pdf'}
 
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Create necessary directories
-os.makedirs(os.path.join(UPLOAD_FOLDER, 'whiteboard'), exist_ok=True)
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
