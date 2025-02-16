@@ -1,224 +1,51 @@
 {% extends "base.html" %}
 
-{% block title %}Study Assistant - Home{% endblock %}
-
-{% block head %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Innovative web application for creative productivity and note-taking">
-    <meta name="keywords" content="productivity, notes, whiteboard, sticky notes, web app">
-    <meta name="author" content="Your Name">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://your-domain.com">
-</head>
-{% endblock %}
+{% block title %}AalifyX: Productivity Companion{% endblock %}
 
 {% block additional_styles %}
-<style>
-    /* Welcome Message Styles */
-    .welcome-message {
-        text-align: center;
-        margin: 3rem 0;
-        animation: fadeIn 1s ease-out;
-    }
-
-    .welcome-title {
-        font-size: 2.5rem;
-        color: var(--banner-color);
-        margin-bottom: 1rem;
-    }
-
-    .welcome-subtitle {
-        font-size: 1.2rem;
-        color: #666;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-
-    /* Feature Card Styles */
-    .features-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-top: 2rem;
-    }
-
-    .feature-card {
-        background-color: white;
-        border-radius: 15px;
-        padding: 1.5rem;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease;
-        cursor: pointer;
-    }
-
-    .feature-card:hover {
-        transform: scale(1.05);
-    }
-
-    .feature-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        display: block;
-    }
-
-    .feature-title {
-        font-size: 1.5rem;
-        color: var(--banner-color);
-        margin-bottom: 1rem;
-    }
-
-    .feature-description {
-        color: #666;
-        line-height: 1.6;
-        margin-bottom: 1.5rem;
-    }
-
-    .feature-button {
-        background-color: var(--button-color);
-        color: white;
-        padding: 0.8rem 1.5rem;
-        border-radius: 25px;
-        text-decoration: none;
-        display: inline-block;
-        transition: transform 0.2s;
-        border: none;
-        cursor: pointer;
-    }
-
-    .feature-button:hover {
-        transform: scale(1.05);
-    }
-
-    /* Decoration Styles */
-    .decoration {
-        position: absolute;
-        font-size: 1.5rem;
-        animation: float 3s ease-in-out infinite;
-        opacity: 0.5;
-        z-index: -1;
-    }
-
-    /* Keyframe Animations */
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    @keyframes float {
-        0%, 100% {
-            transform: translateY(0);
-        }
-        50% {
-            transform: translateY(-20px);
-        }
-    }
-
-    .feature-section {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        background-color: var(--background-color);
-        border-radius: 10px;
-        transition: transform 0.3s ease;
-    }
-
-    .feature-section:hover {
-        transform: scale(1.02);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
-
-    .feature-icon {
-        font-size: 3rem;
-        margin-right: 1rem;
-        color: var(--button-color);
-    }
-
-    .feature-content {
-        flex-grow: 1;
-    }
-
-    .feature-title {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        color: var(--text-color);
-    }
-
-    .feature-description {
-        color: var(--text-color);
-        line-height: 1.6;
-    }
-
-    .cta-button {
-        display: inline-block;
-        padding: 0.75rem 1.5rem;
-        background-color: var(--button-color);
-        color: white;
-        text-decoration: none;
-        border-radius: 25px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .cta-button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="welcome-message">
-    <h1 class="welcome-title">✨ Welcome to Study Assistant ✨</h1>
-    <p class="welcome-subtitle">Your adorable study companion that makes learning fun and organized!</p>
+<div class="container">
+    <div class="hero">
+        <h1>Productivity Reimagined</h1>
+        <p>Elevate your learning and productivity with intelligent tools designed for modern scholars.</p>
+        <div class="powered-by">Powered by AalifyX</div>
+    </div>
+
+    <div id="features" class="features">
+        <div class="feature">
+            <div class="level-indicator">Feature 1</div>
+            <div class="feature-icon">📄</div>
+            <h3>Document Intelligence</h3>
+            <p>Transform PDFs into actionable insights with advanced text analysis.</p>
+            <a href="/pdf_document_intelligence" class="btn">Analyze PDFs</a>
+        </div>
+
+        <div class="feature">
+            <div class="level-indicator">Feature 2</div>
+            <div class="feature-icon">🃏</div>
+            <h3>Smart Flash Card</h3>
+            <p>Create, organize, and connect your learning with intelligent flashcards.</p>
+            <a href="/flashcards" class="btn">Build Knowledge</a>
+        </div>
+
+        <div class="feature">
+            <div class="level-indicator">Feature 3</div>
+            <div class="feature-icon">📝</div>
+            <h3>Digital Canvas</h3>
+            <p>Unleash your creativity with an intuitive digital whiteboard.</p>
+            <a href="/whiteboard_view" class="btn">Start Creating</a>
+        </div>
+
+        <div class="feature">
+            <div class="level-indicator">Feature 4</div>
+            <div class="feature-icon">📅</div>
+            <h3>Digital Planner</h3>
+            <p>Organize tasks, track habits, and manage your daily schedule.</p>
+            <a href="/digital_planner" class="btn">Plan Your Day</a>
+        </div>
+    </div>
 </div>
-
-<div class="features-container">
-    <!-- PDF Assistant -->
-    <div class="feature-card" onclick="window.location.href='{{ url_for('pdf_summary') }}'">
-        <span class="feature-icon">📚</span>
-        <h2 class="feature-title">PDF Assistant</h2>
-        <p class="feature-description">Transform your PDFs into easy-to-understand summaries and study materials</p>
-        <a href="{{ url_for('pdf_summary') }}" class="feature-button">Start Reading</a>
-    </div>
-
-    <!-- Smart Flashcards -->
-    <div class="feature-card" onclick="window.location.href='{{ url_for('flashcards_view') }}'">
-        <span class="feature-icon">🎴</span>
-        <h2 class="feature-title">Smart Flashcards</h2>
-        <p class="feature-description">Create and study with interactive flashcards to boost your memory</p>
-        <a href="{{ url_for('flashcards_view') }}" class="feature-button">Create Cards</a>
-    </div>
-
-    <!-- Creative Whiteboard -->
-    <div class="feature-card" onclick="window.location.href='{{ url_for('whiteboard_view') }}'">
-        <span class="feature-icon">✏️</span>
-        <h2 class="feature-title">Create Whiteboard</h2>
-        <p class="feature-description">Draw, sketch, and visualize your ideas with our digital whiteboard</p>
-        <a href="{{ url_for('whiteboard_view') }}" class="feature-button">Start Drawing</a>
-    </div>
-
-    <!-- Study Planner -->
-    <div class="feature-card" onclick="window.location.href='{{ url_for('study_planner') }}'">
-        <span class="feature-icon">📅</span>
-        <h2 class="feature-title">Study Planner</h2>
-        <p class="feature-description">Plan and track your study sessions effectively</p>
-        <a href="{{ url_for('study_planner') }}" class="feature-button">Start Planning</a>
-    </div>
-</div>
-
-<!-- Floating decorations -->
-<span class="decoration" style="top: 20%; left: 10%;">🌸</span>
-<span class="decoration" style="top: 30%; right: 15%;">✨</span>
-<span class="decoration" style="top: 60%; left: 20%;">🌟</span>
-<span class="decoration" style="top: 70%; right: 10%;">🎨</span>
 {% endblock %}

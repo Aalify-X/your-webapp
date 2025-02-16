@@ -1,160 +1,274 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, url_for, flash, redirect
+from flask_wtf import CSRFProtect
 import os
 import time
 import base64
 from werkzeug.utils import secure_filename
-from pypdf import PdfReader
+import PyPDF2
+import nltk
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from collections import Counter
 import re
-import sys
-import logging
-import io
+from pdfminer.high_level import extract_text
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
+from sumy.parsers.plaintext import PlaintextParser
+from datetime import datetime
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Firebase initialization
+import firebase_admin
+from firebase_admin import credentials, firestore
+import functions_framework
 
-# Create Flask app
-app = Flask(__name__)
+# Path to your Firebase service account key
+cred = credentials.Certificate('progrify--x-firebase-adminsdk-fbsvc-1b86538f6e.json')
+firebase_admin.initialize_app(cred)
+
+# Now you can use Firebase services like Firestore, Realtime Database, etc.
+db = firestore.client()  # Example for Firestore
+
+# Initialize Flask app
+app = Flask(__name__, static_folder='static')
+
+# Add CSRF protection
+csrf = CSRFProtect(app)
 app.secret_key = os.urandom(24)
 
+# Add a simple route for Firebase Functions testing
+@app.route("/")
+def home():
+    return jsonify({"message": "Hello from Firebase Functions!"})
+
+# Firebase requires this function to be named "main"
+@functions_framework.http
+def main(request):
+    # This will call the Flask app's handling of the request
+    with app.request_context(request.environ):
+        return app.full_dispatch_request()
+
+# Download necessary NLTK resources
+try:
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+except Exception as e:
+    print(f"Could not download NLTK resources: {e}")
+
+# Optional NLP imports with fallbacks
+summarizer = None
+question_generator = None
+
+# Try to import transformers if available
+try:
+    from transformers import pipeline
+    try:
+        summarizer = pipeline("summarization", model="t5-small")
+        question_generator = pipeline("text2text-generation", model="t5-small")
+    except Exception as e:
+        print(f"Transformers pipeline loading failed: {e}")
+except ImportError:
+    print("Transformers not available. Using fallback text processing methods.")
+
+# Fallback functions for text processing
+def extract_key_topics_fallback(text, top_n=5):
+    """Extract key topics using basic NLTK processing."""
+    try:
+        words = word_tokenize(text.lower())
+        stop_words = set(stopwords.words('english'))
+        filtered_words = [word for word in words if word.isalnum() and word not in stop_words]
+        word_freq = Counter(filtered_words)
+        return [word for word, _ in word_freq.most_common(top_n)]
+    except Exception as e:
+        print(f"Error in extract_key_topics: {e}")
+        return []
+
+def fallback_summarize(text, num_lines=3):
+    """Simple extractive summarization if no ML model is available."""
+    sentences = sent_tokenize(text)
+    return '. '.join(sentences[:num_lines]) + '.'
+
+def fallback_generate_questions(text, num_questions=2):
+    """Generate basic questions if no ML model is available."""
+    sentences = sent_tokenize(text)
+    return [f"What is the main point of: {sent}?" for sent in sentences[:num_questions]]
+
 # Configuration
+UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+# Summarization pipeline using HuggingFace Transformers
+summarizer = pipeline("summarization", model="t5-small")
 
+# Function to check if the file is allowed
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def extract_text_from_pdf(pdf_path):
-    text = ""
-    with open(pdf_path, 'rb') as file:
-        pdf_reader = PdfReader(file)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-    return text
-
-def get_theme_data():
-    return {
-        'banner_color': '#FFB6C1',
-        'text_color': '#000000',
-        'background_color': '#FFFFFF',
-        # Add any other theme variables you use
-    }
-
-@app.before_request
-def before_request():
-    # Initialize theme data if not present
-    if 'theme_data' not in session:
-        session['theme_data'] = get_theme_data()
-
-@app.route('/')
-def home():
-    return 'PDF Processing API'
-
-@app.route('/api/health')
-def health_check():
-    return jsonify({"status": "ok"})
-
-@app.route('/debug')
-def debug():
-    try:
-        info = {
-            'python_version': sys.version,
-            'flask_version': Flask.__version__,
-            'debug_mode': app.debug,
-            'env': app.env
-        }
-        return info
-    except Exception as e:
-        return {'error': str(e)}
-
-@app.route('/pdf_summary')
-def pdf_summary():
-    theme_data = get_theme_data()
-    return render_template('pdf_summary.html', theme_data=theme_data)
-
-@app.route('/whiteboard_view')
-def whiteboard_view():
-    theme_data = get_theme_data()
-    return render_template('whiteboard.html', theme_data=theme_data)
-
-@app.route('/flashcards')
-def flashcards_view():
-    theme_data = get_theme_data()
-    return render_template('flashcards.html', theme_data=theme_data)
-
-@app.route('/process-pdf', methods=['POST'])
-def process_pdf():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+def extract_pdf_text(pdf_path):
+    """
+    Extract text from a PDF file using PyPDF2.
     
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+    Args:
+        pdf_path (str): Path to the PDF file
     
-    if not file.filename.endswith('.pdf'):
-        return jsonify({'error': 'File must be a PDF'}), 400
-
+    Returns:
+        str: Extracted text from the PDF
+    """
     try:
-        file_stream = io.BytesIO(file.read())
-        reader = PdfReader(file_stream)
+        reader = PyPDF2.PdfReader(open(pdf_path, 'rb'))
         text = ""
         for page in reader.pages:
             text += page.extract_text() + "\n"
-        
-        result = simple_tokenize(text)
-        return jsonify(result)
-        
+        return text.strip()
     except Exception as e:
-        logger.error(f"Error processing PDF: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        print(f"Error extracting PDF text: {e}")
+        return ""
+
+# Route to upload and process the PDF
+@app.route('/upload_pdf', methods=['GET', 'POST'])
+def upload_pdf():
+    if request.method == 'POST':
+        # Check if the post request has the file part
+        if 'file' not in request.files:
+            flash("No file part")
+            return redirect(request.url)
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash("No selected file")
+            return redirect(request.url)
+        
+        if file and allowed_file(file.filename):
+            # Save the uploaded PDF file
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            
+            # Extract text from PDF
+            text = extract_pdf_text(filepath)
+            
+            if text:
+                # Summarize the extracted text
+                summary = summarizer(text, max_length=150, min_length=50, do_sample=False)
+                summarized_text = summary[0]['summary_text']
+                
+                # Save the summarized text in the session for later use
+                session['summarized_text'] = summarized_text
+                flash("PDF processed and summarized successfully!")
+                
+                return render_template('summarized_text.html', summarized_text=summarized_text)
+            else:
+                flash("Failed to extract text from PDF")
+                return redirect(request.url)
+        
+        else:
+            flash("Invalid file type. Please upload a PDF file.")
+            return redirect(request.url)
+    
+    return render_template('upload_pdf.html')
+
+# Route to display the summarized text and generate flashcards
+@app.route('/generate_flashcards', methods=['GET'])
+def generate_flashcards():
+    summarized_text = session.get('summarized_text')
+    
+    if summarized_text:
+        # Here, you can implement flashcard generation logic from the summarized text
+        # For now, we're just displaying the summarized text
+        flashcards = [summarized_text]  # Replace with actual flashcard generation logic
+        
+        return render_template('flashcards.html', flashcards=flashcards)
+    
+    flash("No summarized text available. Please upload and process a PDF first.")
+    return redirect(url_for('upload_pdf'))
+
+# Route to display uploaded PDF and its summary (for testing)
+@app.route('/pdf_document_intelligence')
+def pdf_document_intelligence():
+    return render_template('pdf_document_intelligence.html')
+
 
 @app.route('/create_flashcard', methods=['POST'])
 def create_flashcard():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-            
         front = data.get('front')
         back = data.get('back')
-        
+
         if not front or not back:
-            return jsonify({'error': 'Front and back are required'}), 400
-            
+            return jsonify({
+                'status': 'error', 
+                'error': 'Front and back are required'
+            }), 400
+
+        # Ensure session has flashcards list
         if 'flashcards' not in session:
             session['flashcards'] = []
-            
-        session['flashcards'].append({
+
+        # Create unique ID for the flashcard
+        new_flashcard = {
+            'id': len(session['flashcards']) + 1,
             'front': front,
-            'back': back
-        })
+            'back': back,
+            'created_at': datetime.now().isoformat()
+        }
+
+        session['flashcards'].append(new_flashcard)
         session.modified = True
-        
+
         return jsonify({
             'status': 'success',
-            'flashcard': {'front': front, 'back': back}
-        })
+            'flashcard': new_flashcard
+        }), 200
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Flashcard creation error: {str(e)}")
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
 
 @app.route('/get_flashcards')
 def get_flashcards():
-    return jsonify(session.get('flashcards', []))
+    flashcards = session.get('flashcards', [])
+    return jsonify({
+        'status': 'success',
+        'flashcards': flashcards
+    })
 
 @app.route('/delete_flashcard', methods=['POST'])
 def delete_flashcard():
     try:
         data = request.get_json()
-        index = data.get('index')
-        
-        if 'flashcards' in session and 0 <= index < len(session['flashcards']):
-            session['flashcards'].pop(index)
-            session.modified = True
-            return jsonify({'status': 'success'})
-        return jsonify({'error': 'Flashcard not found'}), 404
+        card_id = data.get('id')
+
+        if not card_id:
+            return jsonify({
+                'status': 'error', 
+                'error': 'Card ID is required'
+            }), 400
+
+        # Find and remove the flashcard
+        session['flashcards'] = [
+            card for card in session.get('flashcards', []) 
+            if card['id'] != card_id
+        ]
+        session.modified = True
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Flashcard deleted successfully'
+        }), 200
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Flashcard deletion error: {str(e)}")
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
 
 @app.route('/save_whiteboard', methods=['POST'])
 def save_whiteboard():
@@ -162,17 +276,17 @@ def save_whiteboard():
         data = request.get_json()
         if not data or 'imageData' not in data:
             return jsonify({'error': 'No image data provided'}), 400
-
-        if 'whiteboards' not in session:
-            session['whiteboards'] = []
-
+            
+        whiteboard_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard')
+        os.makedirs(whiteboard_dir, exist_ok=True)
+        
+        image_data = data['imageData'].split(',')[1]
         filename = f'whiteboard_{int(time.time())}.png'
-        session['whiteboards'].append({
-            'filename': filename,
-            'data': data['imageData']
-        })
-        session.modified = True
-
+        filepath = os.path.join(whiteboard_dir, filename)
+        
+        with open(filepath, 'wb') as f:
+            f.write(base64.b64decode(image_data))
+            
         return jsonify({
             'success': True,
             'filepath': filename
@@ -183,76 +297,18 @@ def save_whiteboard():
 @app.route('/get_whiteboards')
 def get_whiteboards():
     try:
-        whiteboards = session.get('whiteboards', [])
-        return jsonify([w['filename'] for w in whiteboards])
+        whiteboard_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard')
+        files = []
+        if os.path.exists(whiteboard_dir):
+            files = [f for f in os.listdir(whiteboard_dir) if f.startswith('whiteboard_')]
+        return jsonify(files)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/study_planner')
-def study_planner():
-    theme_data = get_theme_data()
-    return render_template('study_planner.html', theme_data=theme_data)
-
-@app.route('/save_task', methods=['POST'])
-def save_task():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-            
-        if 'tasks' not in session:
-            session['tasks'] = []
-            
-        session['tasks'].append({
-            'day': data.get('day'),
-            'time': data.get('time'),
-            'description': data.get('description'),
-            'priority': data.get('priority', 'medium')
-        })
-        session.modified = True
-        
-        return jsonify({
-            'status': 'success',
-            'tasks': session['tasks']
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_tasks')
-def get_tasks():
-    return jsonify(session.get('tasks', []))
-
-@app.route('/delete_task', methods=['POST'])
-def delete_task():
-    try:
-        data = request.get_json()
-        index = data.get('index')
-        
-        if 'tasks' in session and 0 <= index < len(session['tasks']):
-            session['tasks'].pop(index)
-            session.modified = True
-            return jsonify({'status': 'success'})
-        return jsonify({'error': 'Task not found'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/get_plans')
-def get_plans():
-    return jsonify(session.get('study_plans', []))
-
-@app.route('/delete_plan', methods=['POST'])
-def delete_plan():
-    try:
-        data = request.get_json()
-        index = data.get('index')
-        
-        if 'study_plans' in session and 0 <= index < len(session['study_plans']):
-            session['study_plans'].pop(index)
-            session.modified = True
-            return jsonify({'status': 'success'})
-        return jsonify({'error': 'Plan not found'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+@app.route('/get_current_theme')
+def get_current_theme():
+    theme_data = session.get('theme_data', get_default_theme())
+    return jsonify(theme_data)
 
 @app.route('/update_theme', methods=['POST'])
 def update_theme():
@@ -295,128 +351,365 @@ def update_theme():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/get_current_theme')
-def get_current_theme():
-    return jsonify(session.get('theme_data', get_theme_data()))
+@app.route('/progress_tracking', methods=['GET', 'POST'])
+def progress_tracking():
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            action = data.get('action')
+            
+            if action == 'add_goal':
+                goal = {
+                    'title': data.get('title'),
+                    'description': data.get('description'),
+                    'target_date': data.get('target_date'),
+                    'status': 'In Progress'
+                }
+                
+                if 'goals' not in session:
+                    session['goals'] = []
+                
+                session['goals'].append(goal)
+                session.modified = True
+                
+                return jsonify({
+                    'status': 'success',
+                    'goal': goal
+                })
+            
+            elif action == 'update_goal':
+                goals = session.get('goals', [])
+                goal_index = data.get('index')
+                
+                if goal_index is not None and 0 <= goal_index < len(goals):
+                    goals[goal_index]['status'] = data.get('status', goals[goal_index]['status'])
+                    session.modified = True
+                    
+                    return jsonify({
+                        'status': 'success',
+                        'goal': goals[goal_index]
+                    })
+                
+                return jsonify({'error': 'Invalid goal index'}), 400
+            
+            return jsonify({'error': 'Invalid action'}), 400
+        
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    # GET request renders the template with existing goals
+    return render_template('progress_tracking.html', 
+                           theme_data=session.get('theme_data', get_default_theme()),
+                           goals=session.get('goals', []))
+
+@app.route('/delete_pdf', methods=['POST'])
+def delete_pdf():
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({'status': 'error', 'error': 'No filename provided'}), 400
+        
+        # Ensure filename is secure and within the PDF upload directory
+        filename = secure_filename(filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'pdf', filename)
+        
+        # Check if file exists before attempting to delete
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        # Remove from session's uploaded PDFs
+        if 'uploaded_pdfs' in session:
+            session['uploaded_pdfs'] = [
+                pdf for pdf in session['uploaded_pdfs'] 
+                if pdf['filename'] != filename
+            ]
+            session.modified = True
+        
+        return jsonify({'status': 'success'}), 200
+    
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+@app.route('/save_goal', methods=['POST'])
+def save_goal():
+    try:
+        data = request.get_json()
+        
+        # Validate input
+        if not data:
+            return jsonify({'status': 'error', 'error': 'No data provided'}), 400
+        
+        title = data.get('title')
+        description = data.get('description')
+        goal_type = data.get('type')
+        deadline = data.get('deadline')
+        
+        if not title or not goal_type:
+            return jsonify({'status': 'error', 'error': 'Title and type are required'}), 400
+        
+        # Initialize goals in session if not exists
+        if 'goals' not in session:
+            session['goals'] = []
+        
+        # Create goal object
+        goal = {
+            'id': str(len(session['goals']) + 1),
+            'title': title,
+            'description': description or '',
+            'type': goal_type,
+            'deadline': deadline or ''
+        }
+        
+        # Add goal to session
+        session['goals'].append(goal)
+        session.modified = True
+        
+        return jsonify({
+            'status': 'success', 
+            'goal': goal
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/get_goals')
+def get_goals():
+    try:
+        goals = session.get('goals', [])
+        return jsonify({
+            'status': 'success',
+            'goals': goals
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/delete_goal', methods=['POST'])
+def delete_goal():
+    try:
+        data = request.get_json()
+        goal_id = data.get('goal_id')
+        
+        if not goal_id:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No goal ID provided'
+            }), 400
+        
+        if 'goals' not in session:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No goals found'
+            }), 400
+        
+        session['goals'] = [goal for goal in session['goals'] if goal['id'] != goal_id]
+        session.modified = True
+        
+        return jsonify({
+            'status': 'success'
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
 
 @app.route('/save_schedule', methods=['POST'])
 def save_schedule():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-            
-        if 'schedule' not in session:
-            session['schedule'] = {}
-            
-        day = data.get('day')
-        row = data.get('row')
-        tasks = data.get('tasks')
         
-        if not all([day, isinstance(row, int), tasks]):
-            return jsonify({'error': 'Invalid data format'}), 400
-            
-        if day not in session['schedule']:
-            session['schedule'][day] = {}
-            
-        session['schedule'][day][str(row)] = tasks
+        # Validate input
+        if not data:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No data provided'
+            }), 400
+        
+        title = data.get('title')
+        day = data.get('day')
+        time = data.get('time')
+        
+        if not title or not day or not time:
+            return jsonify({
+                'status': 'error', 
+                'error': 'Title, day, and time are required'
+            }), 400
+        
+        # Initialize schedule in session if not exists
+        if 'schedule' not in session:
+            session['schedule'] = []
+        
+        # Create schedule item
+        schedule_item = {
+            'id': str(len(session['schedule']) + 1),
+            'title': title,
+            'day': day,
+            'time': time
+        }
+        
+        # Add schedule item to session
+        session['schedule'].append(schedule_item)
         session.modified = True
         
-        return jsonify({'status': 'success'})
+        return jsonify({
+            'status': 'success', 
+            'schedule_item': schedule_item
+        }), 200
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
 
 @app.route('/get_schedule')
 def get_schedule():
-    return jsonify(session.get('schedule', {}))
+    try:
+        schedule = session.get('schedule', [])
+        return jsonify({
+            'status': 'success',
+            'schedule': schedule
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
 
-@app.route('/delete_schedule_item', methods=['POST'])
-def delete_schedule_item():
+@app.route('/delete_schedule', methods=['POST'])
+def delete_schedule():
     try:
         data = request.get_json()
-        index = data.get('index')
+        schedule_id = data.get('schedule_id')
         
-        if 'schedule' in session and 0 <= index < len(session['schedule']):
-            session['schedule'].pop(index)
-            session.modified = True
-            return jsonify({'status': 'success'})
-        return jsonify({'error': 'Schedule item not found'}), 404
+        if not schedule_id:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No schedule ID provided'
+            }), 400
+        
+        if 'schedule' not in session:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No schedule found'
+            }), 400
+        
+        session['schedule'] = [
+            item for item in session['schedule'] 
+            if item['id'] != schedule_id
+        ]
+        session.modified = True
+        
+        return jsonify({
+            'status': 'success'
+        }), 200
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
 
-@app.route('/upload_pdf', methods=['POST'])
-def upload_pdf():
-    if 'pdf_file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-    
-    pdf_file = request.files['pdf_file']
-    if pdf_file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
-    if pdf_file and allowed_file(pdf_file.filename):
-        try:
-            # Your existing PDF processing code...
-            return render_template('pdf_summary.html', 
-                                summary=summary, 
-                                filename=pdf_file.filename,
-                                theme_data=session.get('theme_data', get_theme_data()))
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
-    return jsonify({'error': 'Invalid file type'}), 400
-
-@app.route('/generate_summary', methods=['POST'])
-def generate_summary():
+@app.route('/update_goal', methods=['POST'])
+def update_goal():
     try:
-        # Your existing summary generation code...
-        return render_template('pdf_summary.html', 
-                            summary=summary,
-                            theme_data=session.get('theme_data', get_theme_data()))
+        data = request.get_json()
+        goal_id = data.get('goal_id')
+        status = data.get('status')
+
+        if not goal_id or not status:
+            return jsonify({
+                'status': 'error', 
+                'error': 'Goal ID and status are required'
+            }), 400
+
+        if 'goals' not in session:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No goals found'
+            }), 400
+
+        for goal in session['goals']:
+            if goal['id'] == goal_id:
+                goal['status'] = status
+                session.modified = True
+                return jsonify({
+                    'status': 'success', 
+                    'goal': goal
+                }), 200
+
+        return jsonify({
+            'status': 'error', 
+            'error': 'Goal not found'
+        }), 404
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Goal update error: {str(e)}")
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
 
-@app.errorhandler(404)
-def not_found(e):
-    return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-            <head>
-                <title>404 - Not Found</title>
-            </head>
-            <body>
-                <h1>404 - Page Not Found</h1>
-                <p>The requested page does not exist.</p>
-            </body>
-        </html>
-    """), 404
+@app.route('/dashboard')
+def dashboard():
+    theme_data = session.get('theme_data', get_default_theme())
+    
+    # Aggregate data from different sections
+    dashboard_data = {
+        'flashcards_count': len(session.get('flashcards', [])),
+        'uploaded_pdfs_count': len(session.get('uploaded_pdfs', [])),
+        'goals_count': len(session.get('goals', [])),
+        'active_challenges': session.get('active_challenges', [])
+    }
+    
+    return render_template('dashboard.html', 
+                           theme_data=theme_data, 
+                           dashboard_data=dashboard_data)
 
-@app.errorhandler(500)
-def server_error(e):
-    theme_data = get_theme_data()
-    return render_template('500.html', theme_data=theme_data), 500
-
-# For Vercel
-app.debug = False
-
-def simple_tokenize(text):
-    """Simple tokenizer that splits text into sentences and words"""
-    sentences = re.split(r'[.!?]+', text)
-    sentences = [s.strip() for s in sentences if s.strip()]
-    words = text.replace(',', ' ').split()
+def get_default_theme():
+    """
+    Returns a default theme configuration for the application.
+    
+    Returns:
+        dict: A dictionary containing default theme settings.
+    """
     return {
-        'sentences': sentences,
-        'sentence_count': len(sentences),
-        'word_count': len(words),
-        'text': text
+        "primary_color": "#3498db",  # Blue
+        "secondary_color": "#2ecc71",  # Green
+        "text_color": "#333333",  # Dark gray
+        "background_color": "#ffffff",  # White
+        "font_family": "Arial, sans-serif"
     }
 
+@app.route('/')
+def index():
+    theme_data = get_default_theme()
+    return render_template('index.html', theme_data=theme_data)
+
+# Routes for main features
+@app.route('/flashcards')
+def flashcards():
+    theme_data = get_default_theme()
+    return render_template('flashcards.html', theme_data=theme_data)
+
+@app.route('/whiteboard_view')
+def whiteboard():
+    theme_data = get_default_theme()
+    return render_template('whiteboard.html', theme_data=theme_data)
+
+@app.route('/digital_planner')
+def digital_planner():
+    theme_data = get_default_theme()
+    return render_template('digital_planner.html', theme_data=theme_data)
+
 if __name__ == '__main__':
-    app.run(debug=True)
-
-# For Vercel Serverless Functions
-app = app
-
-"""
-make some changes and commit again to redeploy or you can also use vercel cli to redeploy
-changing version of nodejs from 22 to 18 solves the 500 internal server error in vercel
-"""
+    app.run(host='0.0.0.0', port=5000, debug=True)

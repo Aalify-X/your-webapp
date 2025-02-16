@@ -1,13 +1,16 @@
 {
-  "name": "vercel-app",
+  "name": "firebase-test",
   "version": "1.0.0",
-  "main": "wsgi.py",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "start": "python app.py",
-    "dev": "python app.py --debug",
-    "serve": "gunicorn app:app"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "engines": {
-    "python": "3.9.x"
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "firebase": "^11.3.1"
   }
 }

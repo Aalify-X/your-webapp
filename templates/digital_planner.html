@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Digital Planner | AalifyX{% endblock %}
+
+{% block additional_styles %}
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { background: #f4f4f4; color: #333; padding: 20px; transition: 0.3s; }
+    .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; margin-bottom: 15px; }
+    .btn { background: #FF847C; color: white; padding: 10px; border: none; cursor: pointer; width: 100%; margin-top: 10px; border-radius: 5px; }
+    .btn:hover { background: #fe7066; }
+    input, textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+    ul { list-style: none; padding: 0; }
+    ul li { background: #eee; padding: 10px; margin: 5px 0; display: flex; justify-content: space-between; border-radius: 5px; }
+    .delete { background: red; color: white; border: none; padding: 5px; cursor: pointer; border-radius: 3px; }
+    .dark-mode { background: #333; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>📅 Digital Planner</h2>
+    
+    <!-- Task Manager -->
+    <h3>Tasks</h3>
+    <input type="text" id="taskInput" placeholder="Enter a task">
+    <button class="btn" onclick="addTask()">Add Task</button>
+    <ul id="taskList"></ul>
+
+    <!-- Daily Planner -->
+    <h3>Daily Schedule</h3>
+    <input type="time" id="timeInput">
+    <input type="text" id="eventInput" placeholder="Enter event">
+    <button class="btn" onclick="addEvent()">Add Event</button>
+    <ul id="eventList"></ul>
+
+    <!-- Habit Tracker -->
+    <h3>Habit Tracker</h3>
+    <input type="text" id="habitInput" placeholder="Track a habit">
+    <button class="btn" onclick="addHabit()">Add Habit</button>
+    <ul id="habitList"></ul>
+
+    <!-- Notes Section -->
+    <h3>Notes</h3>
+    <textarea id="noteInput" rows="3" placeholder="Write your notes..."></textarea>
+    <button class="btn" onclick="saveNote()">Save Note</button>
+    <p id="savedNote"></p>
+
+</div>
+
+<script>
+    // Task Manager
+    function addTask() {
+        let taskInput = document.getElementById("taskInput");
+        if (taskInput.value.trim() === "") return;
+        let li = document.createElement("li");
+        li.innerHTML = taskInput.value + " <button class='delete' onclick='this.parentElement.remove()'>❌</button>";
+        document.getElementById("taskList").appendChild(li);
+        taskInput.value = "";
+    }
+
+    // Daily Planner
+    function addEvent() {
+        let time = document.getElementById("timeInput").value;
+        let event = document.getElementById("eventInput").value;
+        if (time.trim() === "" || event.trim() === "") return;
+        let li = document.createElement("li");
+        li.innerHTML = time + " - " + event + " <button class='delete' onclick='this.parentElement.remove()'>❌</button>";
+        document.getElementById("eventList").appendChild(li);
+        document.getElementById("eventInput").value = "";
+    }
+
+    // Habit Tracker
+    function addHabit() {
+        let habitInput = document.getElementById("habitInput");
+        if (habitInput.value.trim() === "") return;
+        let li = document.createElement("li");
+        li.innerHTML = habitInput.value + " <button class='delete' onclick='this.parentElement.remove()'>❌</button>";
+        document.getElementById("habitList").appendChild(li);
+        habitInput.value = "";
+    }
+
+    // Notes Section
+    function saveNote() {
+        let noteText = document.getElementById("noteInput").value;
+        if (noteText.trim() === "") return;
+        document.getElementById("savedNote").innerText = "Saved: " + noteText;
+        document.getElementById("noteInput").value = "";
+    }
+
+    // Dark Mode Toggle
+    function toggleDarkMode() {
+        document.body.classList.toggle("dark-mode");
+    }
+</script>
+{% endblock %}

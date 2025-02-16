@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<style>
+.dashboard-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.dashboard-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.dashboard-card:hover {
+    transform: scale(1.05);
+}
+
+.dashboard-card-icon {
+    font-size: 3em;
+    margin-bottom: 15px;
+    color: #4CAF50;
+}
+
+.dashboard-card-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.dashboard-card-value {
+    font-size: 2em;
+    color: #2196F3;
+}
+
+.quick-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.quick-action-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.quick-action-btn:hover {
+    background-color: #45a049;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-card">
+        <div class="dashboard-card-icon">📇</div>
+        <div class="dashboard-card-title">Flashcards</div>
+        <div class="dashboard-card-value">{{ dashboard_data.flashcards_count }}</div>
+    </div>
+
+    <div class="dashboard-card">
+        <div class="dashboard-card-icon">📄</div>
+        <div class="dashboard-card-title">PDF Documents</div>
+        <div class="dashboard-card-value">{{ dashboard_data.uploaded_pdfs_count }}</div>
+    </div>
+
+    <div class="dashboard-card">
+        <div class="dashboard-card-icon">🎯</div>
+        <div class="dashboard-card-title">Goals</div>
+        <div class="dashboard-card-value">{{ dashboard_data.goals_count }}</div>
+    </div>
+
+    <div class="dashboard-card">
+        <div class="dashboard-card-icon">🏆</div>
+        <div class="dashboard-card-title">Active Challenges</div>
+        <div class="dashboard-card-value">{{ dashboard_data.active_challenges|length }}</div>
+    </div>
+</div>
+
+<div class="quick-actions">
+    <a href="{{ url_for('flashcards') }}" class="quick-action-btn">Manage Flashcards</a>
+    <a href="{{ url_for('pdf_assistant') }}" class="quick-action-btn">Upload PDF</a>
+    <a href="{{ url_for('progress_tracking') }}" class="quick-action-btn">Track Progress</a>
+</div>
+{% endblock %}

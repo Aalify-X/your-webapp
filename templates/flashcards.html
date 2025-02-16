@@ -1,232 +1,223 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="container">
-    <div class="flashcard-form">
-        <h2>Create New Flashcard</h2>
-        <form id="flashcardForm" onsubmit="createFlashcard(event)">
-            <div class="form-group">
-                <label for="question">Question:</label>
-                <textarea id="question" required rows="3" placeholder="Enter your question"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="answer">Answer:</label>
-                <textarea id="answer" required rows="3" placeholder="Enter your answer"></textarea>
-            </div>
-            <button type="submit" class="create-btn">Create Flashcard</button>
-        </form>
-    </div>
-    
-    <div id="flashcardsContainer" class="flashcards-container"></div>
-</div>
-
+{% block additional_styles %}
 <style>
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.flashcard-form {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    margin-bottom: 30px;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-}
-
-.form-group textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    resize: vertical;
-    font-size: 14px;
-}
-
-.create-btn {
-    background-color: var(--theme-color, #FFB6C1);
-    color: white;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 16px;
-    transition: opacity 0.3s;
-}
-
-.create-btn:hover {
-    opacity: 0.9;
-}
-
-.flashcards-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-    padding: 20px 0;
-}
-
-.flashcard {
-    width: 300px;
-    height: 200px;
-    perspective: 1000px;
-    margin: 0 auto;
-}
-
-.flashcard-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    text-align: center;
-    transition: transform 0.8s;
-    transform-style: preserve-3d;
-    cursor: pointer;
-}
-
-.flashcard.flipped .flashcard-inner {
-    transform: rotateY(180deg);
-}
-
-.flashcard-front, .flashcard-back {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    background: white;
-    font-size: 16px;
-    line-height: 1.5;
-}
-
-.flashcard-back {
-    transform: rotateY(180deg);
-    background: #f8f8f8;
-}
-
-.delete-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #ff4444;
-    z-index: 2;
-}
-
-.delete-btn:hover {
-    color: #cc0000;
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    loadFlashcards();
-});
-
-function createFlashcard(event) {
-    event.preventDefault();
-    
-    const question = document.getElementById('question').value;
-    const answer = document.getElementById('answer').value;
-    
-    if (!question || !answer) {
-        alert('Please fill in both question and answer fields');
-        return;
+    .flashcard-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        background-color: var(--background-color);
     }
-    
-    fetch('/create_flashcard', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-            front: question,
-            back: answer 
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            document.getElementById('flashcardForm').reset();
-            loadFlashcards();
-        } else {
-            alert('Error creating flashcard: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error creating flashcard');
-    });
-}
 
-function loadFlashcards() {
-    fetch('/get_flashcards')
-    .then(response => response.json())
-    .then(flashcards => {
-        const container = document.getElementById('flashcardsContainer');
-        container.innerHTML = '';
+    .flashcard-creator {
+        width: 100%;
+        max-width: 600px;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .flashcard-input {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 15px;
+    }
+
+    .flashcard-input label {
+        margin-bottom: 5px;
+        color: var(--text-color);
+        font-weight: bold;
+    }
+
+    .flashcard-input input, 
+    .flashcard-input textarea {
+        padding: 10px;
+        border: 2px solid var(--button-color);
+        border-radius: 8px;
+        font-size: 16px;
+    }
+
+    .flashcard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        width: 100%;
+    }
+
+    .flashcard {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        perspective: 1000px;
+        height: 200px;
+        width: 300px;
+        position: relative;
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
+        cursor: pointer;
+    }
+
+    .flashcard.flipped {
+        transform: rotateY(180deg);
+    }
+
+    .flashcard-front, 
+    .flashcard-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        font-size: 18px;
+        top: 0;
+        left: 0;
+        background-color: white;
+        color: black;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .flashcard-back {
+        transform: rotateY(180deg);
+    }
+
+    .delete-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(252, 0, 0, 0.6);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        z-index: 10;
+        font-size: 18px;
+    }
+
+    .delete-btn:hover {
+        background-color: rgba(252, 0, 0, 0.8);
+    }
+
+    .create-btn {
+        background-color: var(--button-color);
+        color: rgb(248, 117, 117);
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        width: 100%;
+        font-size: 16px;
+    }
+
+    .create-btn:hover {
+        opacity: 0.9;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flashcard-container">
+    <div class="flashcard-creator">
+        <div class="flashcard-input">
+            <label>Front text</label>
+            <input type="text" id="front-input" placeholder="Enter your front text">
+        </div>
+        <div class="flashcard-input">
+            <label>Back text</label>
+            <textarea id="back-input" placeholder="Enter the back text"></textarea>
+        </div>
+        <button class="create-btn" onclick="createFlashcard()">Create Flashcard</button>
+    </div>
+
+    <div class="flashcard-grid" id="flashcard-grid"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class FlashcardManager {
+    constructor() {
+        this.flashcards = JSON.parse(localStorage.getItem('flashcards') || '[]');
+        this.renderFlashcards();
+    }
+
+    createFlashcard() {
+        const frontInput = document.getElementById('front-input');
+        const backInput = document.getElementById('back-input');
         
-        flashcards.forEach((card, index) => {
-            const div = document.createElement('div');
-            div.className = 'flashcard';
-            div.innerHTML = `
-                <div class="flashcard-inner">
-                    <button class="delete-btn" onclick="event.stopPropagation(); deleteFlashcard(${index})">×</button>
-                    <div class="flashcard-front">
-                        <p>${card.front}</p>
-                    </div>
-                    <div class="flashcard-back">
-                        <p>${card.back}</p>
-                    </div>
-                </div>
+        if (!frontInput.value.trim() || !backInput.value.trim()) {
+            alert('Please enter text for both sides');
+            return;
+        }
+
+        const newFlashcard = {
+            id: Date.now(),
+            front: frontInput.value.trim(),
+            back: backInput.value.trim()
+        };
+
+        this.flashcards.push(newFlashcard);
+        this.saveFlashcards();
+        this.renderFlashcards();
+
+        // Clear inputs
+        frontInput.value = '';
+        backInput.value = '';
+    }
+
+    renderFlashcards() {
+        const grid = document.getElementById('flashcard-grid');
+        grid.innerHTML = '';
+
+        this.flashcards.forEach((card, index) => {
+            const flashcardElement = document.createElement('div');
+            flashcardElement.className = 'flashcard';
+            flashcardElement.innerHTML = `
+                <button class="delete-btn" onclick="flashcardManager.deleteFlashcard(${index})">✕</button>
+                <div class="flashcard-front">${card.front}</div>
+                <div class="flashcard-back">${card.back}</div>
             `;
-            div.addEventListener('dblclick', () => {
-                div.classList.toggle('flipped');
+
+            flashcardElement.addEventListener('click', () => {
+                flashcardElement.classList.toggle('flipped');
             });
-            container.appendChild(div);
+
+            grid.appendChild(flashcardElement);
         });
-    })
-    .catch(error => console.error('Error:', error));
+    }
+
+    deleteFlashcard(index) {
+        this.flashcards.splice(index, 1);
+        this.saveFlashcards();
+        this.renderFlashcards();
+    }
+
+    saveFlashcards() {
+        localStorage.setItem('flashcards', JSON.stringify(this.flashcards));
+    }
 }
 
-function deleteFlashcard(index) {
-    fetch('/delete_flashcard', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ index })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            loadFlashcards();
-        } else {
-            alert('Error deleting flashcard: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error deleting flashcard');
-    });
+// Global instance
+const flashcardManager = new FlashcardManager();
+
+// Global functions to work with the manager
+function createFlashcard() {
+    flashcardManager.createFlashcard();
 }
 </script>
 {% endblock %}
