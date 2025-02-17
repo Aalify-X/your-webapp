@@ -7,7 +7,13 @@ services:
     . venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt
-  startCommand: cd /opt/render/project/src/backend && gunicorn app:app
+    pwd
+    ls -R
+  startCommand: |
+    cd /opt/render/project/src/backend
+    pwd
+    ls
+    gunicorn --workers 4 --threads 2 app:app
   envVars:
   - key: PYTHON_VERSION
     value: 3.11.9
@@ -17,3 +23,5 @@ services:
     value: 1
   - key: PORT
     value: 10000
+  - key: PROJECT_ROOT
+    value: /opt/render/project/src

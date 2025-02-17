@@ -30,37 +30,53 @@ except ImportError:
     PlaintextParser = None
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, 
+logging.basicConfig(level=logging.DEBUG, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Add path diagnostics function
-def diagnose_template_path():
-    import os
+# Diagnostic function to log system paths
+def log_system_paths():
+    paths = {
+        'Current Working Directory': os.getcwd(),
+        'Python Path': sys.path,
+        'Project Root': os.environ.get('PROJECT_ROOT', 'Not Set'),
+        'Possible Frontend Paths': [
+            '/opt/render/project/src/frontend',
+            '/opt/render/project/frontend',
+            '../frontend',
+            'frontend'
+        ]
+    }
     
-    # Possible template locations
+    for key, value in paths.items():
+        logger.info(f"{key}: {value}")
+
+# Log system paths at startup
+log_system_paths()
+
+# Determine the most likely frontend path
+def find_frontend_path():
     possible_paths = [
-        '/opt/render/project/src/frontend/index.html',
-        '/opt/render/project/frontend/index.html',
-        '../frontend/index.html',
-        'frontend/index.html'
+        '/opt/render/project/src/frontend',
+        '/opt/render/project/frontend',
+        os.path.abspath('../frontend'),
+        os.path.abspath('frontend')
     ]
     
-    diagnostics = []
     for path in possible_paths:
-        full_path = os.path.abspath(path)
-        diagnostics.append({
-            'path': full_path,
-            'exists': os.path.exists(full_path),
-            'is_file': os.path.isfile(full_path) if os.path.exists(full_path) else False
-        })
+        index_path = os.path.join(path, 'index.html')
+        if os.path.exists(index_path):
+            logger.info(f"Found frontend path: {path}")
+            return path
     
-    return diagnostics
+    logger.error("Could not find frontend path")
+    return None
 
-# Initialize Flask app with flexible template and static folder configuration
+# Initialize Flask with flexible path detection
+frontend_path = find_frontend_path()
 app = Flask(__name__, 
-            static_folder=os.path.abspath('../frontend') if os.path.exists('../frontend') else '/opt/render/project/src/frontend', 
-            template_folder=os.path.abspath('../frontend') if os.path.exists('../frontend') else '/opt/render/project/src/frontend')
+            static_folder=frontend_path, 
+            template_folder=frontend_path)
 
 # Simplified CORS configuration
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -97,7 +113,9 @@ def health_check():
                 "PyPDF2": bool(PyPDF2),
                 "pdfminer": bool(extract_text),
                 "sumy": bool(Tokenizer)
-            }
+            },
+            "frontend_path": frontend_path,
+            "environment": os.environ.get('FLASK_ENV', 'Not Set')
         }), 200
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -107,31 +125,21 @@ def health_check():
             "error": str(e)
         }), 500
 
-# Modify home route with comprehensive error handling
+# Home route with comprehensive error handling
 @app.route('/')
 @dependency_fallback
 def home():
     try:
-        # Try multiple template paths
-        possible_paths = [
-            '/opt/render/project/src/frontend/index.html',
-            '/opt/render/project/frontend/index.html',
-            '../frontend/index.html',
-            'frontend/index.html'
-        ]
+        if frontend_path:
+            index_path = os.path.join(frontend_path, 'index.html')
+            if os.path.exists(index_path):
+                return render_template(index_path)
         
-        for template_path in possible_paths:
-            try:
-                if os.path.exists(template_path):
-                    return render_template(template_path)
-            except Exception as path_error:
-                logger.error(f"Error rendering {template_path}: {path_error}")
-        
-        # If no template found, return diagnostic information
+        # Fallback error response
         return jsonify({
             "status": "error",
-            "message": "Could not find index.html",
-            "diagnostics": diagnose_template_path()
+            "message": "Could not locate frontend template",
+            "frontend_path": frontend_path
         }), 500
     
     except Exception as e:
@@ -139,9 +147,9 @@ def home():
         logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
-            "message": "Could not render home template",
+            "message": "Template rendering failed",
             "error": str(e),
-            "diagnostics": diagnose_template_path()
+            "frontend_path": frontend_path
         }), 500
 
 # Ensure debug information is logged
