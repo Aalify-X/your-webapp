@@ -3,30 +3,13 @@ services:
   name: progrify-backend
   env: python
   buildCommand: |
-    python -m venv venv
-    . venv/bin/activate
-    pip install --upgrade pip
+    python -m pip install --upgrade pip
     pip install -r requirements.txt
-    echo "Project Structure:"
-    pwd
-    echo "Frontend Directory Contents:"
-    ls -l /opt/render/project/src/frontend
-  startCommand: |
-    cd /opt/render/project/src/backend
-    echo "Backend Directory Contents:"
-    pwd
-    ls
-    gunicorn --workers 4 --threads 2 app:app
+  startCommand: gunicorn --bind 0.0.0.0:$PORT backend/app:app
   envVars:
   - key: PYTHON_VERSION
     value: 3.11.9
   - key: FLASK_ENV
     value: production
-  - key: PYTHONUNBUFFERED
-    value: 1
   - key: PORT
     value: 10000
-  - key: PROJECT_ROOT
-    value: /opt/render/project/src
-  - key: FRONTEND_PATH
-    value: /opt/render/project/src/frontend
