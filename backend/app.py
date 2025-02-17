@@ -34,10 +34,33 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app with explicit configurations
+# Add path diagnostics function
+def diagnose_template_path():
+    import os
+    
+    # Possible template locations
+    possible_paths = [
+        '/opt/render/project/src/frontend/index.html',
+        '/opt/render/project/frontend/index.html',
+        '../frontend/index.html',
+        'frontend/index.html'
+    ]
+    
+    diagnostics = []
+    for path in possible_paths:
+        full_path = os.path.abspath(path)
+        diagnostics.append({
+            'path': full_path,
+            'exists': os.path.exists(full_path),
+            'is_file': os.path.isfile(full_path) if os.path.exists(full_path) else False
+        })
+    
+    return diagnostics
+
+# Initialize Flask app with flexible template and static folder configuration
 app = Flask(__name__, 
-            static_folder='/opt/render/project/src/frontend', 
-            template_folder='/opt/render/project/src/frontend')
+            static_folder=os.path.abspath('../frontend') if os.path.exists('../frontend') else '/opt/render/project/src/frontend', 
+            template_folder=os.path.abspath('../frontend') if os.path.exists('../frontend') else '/opt/render/project/src/frontend')
 
 # Simplified CORS configuration
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -84,24 +107,50 @@ def health_check():
             "error": str(e)
         }), 500
 
-# Preserve existing routes with dependency fallback
+# Modify home route with comprehensive error handling
 @app.route('/')
 @dependency_fallback
 def home():
     try:
-        # Use absolute path for template
-        return render_template('/opt/render/project/src/frontend/index.html')
+        # Try multiple template paths
+        possible_paths = [
+            '/opt/render/project/src/frontend/index.html',
+            '/opt/render/project/frontend/index.html',
+            '../frontend/index.html',
+            'frontend/index.html'
+        ]
+        
+        for template_path in possible_paths:
+            try:
+                if os.path.exists(template_path):
+                    return render_template(template_path)
+            except Exception as path_error:
+                logger.error(f"Error rendering {template_path}: {path_error}")
+        
+        # If no template found, return diagnostic information
+        return jsonify({
+            "status": "error",
+            "message": "Could not find index.html",
+            "diagnostics": diagnose_template_path()
+        }), 500
+    
     except Exception as e:
-        logger.error(f"Home route error: {e}")
+        logger.error(f"Comprehensive home route error: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
             "message": "Could not render home template",
-            "error": str(e)
+            "error": str(e),
+            "diagnostics": diagnose_template_path()
         }), 500
 
+# Ensure debug information is logged
+logger.info(f"Static folder: {app.static_folder}")
+logger.info(f"Template folder: {app.template_folder}")
+
 # Ensure static and template paths are correctly set
-app.static_folder = '/opt/render/project/src/frontend'
-app.template_folder = '/opt/render/project/src/frontend'
+app.static_folder = app.static_folder
+app.template_folder = app.template_folder
 
 # Ensure debug mode is off in production
 app.debug = False
