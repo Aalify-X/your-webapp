@@ -18,18 +18,6 @@ from sumy.utils import get_stop_words
 from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
 
-# Firebase initialization
-import firebase_admin
-from firebase_admin import credentials, firestore
-import functions_framework
-
-# Path to your Firebase service account key
-cred = credentials.Certificate('progrify--x-firebase-adminsdk-fbsvc-1b86538f6e.json')
-firebase_admin.initialize_app(cred)
-
-# Now you can use Firebase services like Firestore, Realtime Database, etc.
-db = firestore.client()  # Example for Firestore
-
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
 
@@ -37,17 +25,10 @@ app = Flask(__name__, static_folder='static')
 csrf = CSRFProtect(app)
 app.secret_key = os.urandom(24)
 
-# Add a simple route for Firebase Functions testing
+# Add a simple route for testing
 @app.route("/")
 def home():
-    return jsonify({"message": "Hello from Firebase Functions!"})
-
-# Firebase requires this function to be named "main"
-@functions_framework.http
-def main(request):
-    # This will call the Flask app's handling of the request
-    with app.request_context(request.environ):
-        return app.full_dispatch_request()
+    return render_template("index.html")
 
 # Download necessary NLTK resources
 try:
