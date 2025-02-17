@@ -1,1 +1,1 @@
-web: cd backend && gunicorn app:app --workers 4 --threads 2
+web: cd /opt/render/project/src/backend && gunicorn app:app --workers 4 --threads 2
