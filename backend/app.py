@@ -19,6 +19,13 @@ from sumy.nlp.stemmers import Stemmer
 from sumy.utils import get_stop_words
 from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
+import logging
+import traceback
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Safely import transformers
 try:
@@ -27,25 +34,79 @@ except ImportError:
     pipeline = None
 
 # Initialize Flask app
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, 
+            static_folder='../frontend', 
+            template_folder='../frontend')
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 csrf = CSRFProtect(app)
 app.secret_key = os.urandom(24)
 
+# Add error handler
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log the error
+    logger.error(f"Unhandled Exception: {str(e)}")
+    logger.error(traceback.format_exc())
+    
+    # Return a structured error response
+    return jsonify({
+        "status": "error",
+        "message": "Internal Server Error",
+        "error_details": str(e)
+    }), 500
+
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({
-        "status": "healthy", 
-        "message": "Backend is running",
-        "python_version": sys.version,
-        "transformers_available": pipeline is not None
-    }), 200
+    try:
+        return jsonify({
+            "status": "healthy",
+            "message": "Backend is running",
+            "python_version": sys.version,
+            "environment": os.environ.get('FLASK_ENV', 'Not Set'),
+            "debug_mode": app.debug,
+            "transformers_available": pipeline is not None
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Health check failed",
+            "error": str(e)
+        }), 500
 
 # Add a simple route for testing
 @app.route("/")
 def home():
-    return render_template("index.html")
+    try:
+        # Try to render index.html from frontend directory
+        return render_template("index.html")
+    except Exception as e:
+        logger.error(f"Template rendering error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Could not render template",
+            "error": str(e)
+        }), 500
+
+# Add route to list available templates (for debugging)
+@app.route("/list-templates")
+def list_templates():
+    import os
+    template_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+    try:
+        templates = os.listdir(template_dir)
+        return jsonify({
+            "status": "success",
+            "templates": [t for t in templates if t.endswith('.html')]
+        }), 200
+    except Exception as e:
+        logger.error(f"Could not list templates: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Could not list templates",
+            "error": str(e)
+        }), 500
 
 # Download necessary NLTK resources
 try:
@@ -711,5 +772,8 @@ def digital_planner():
     theme_data = get_default_theme()
     return render_template('digital_planner.html', theme_data=theme_data)
 
+# Ensure debug mode is off in production
+app.debug = False
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)
