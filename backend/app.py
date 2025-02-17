@@ -88,18 +88,15 @@ def health_check():
 @app.route('/')
 @dependency_fallback
 def home():
-    return jsonify({
-        "status": "healthy",
-        "message": "Backend is running"
-    }), 200
-
-# Placeholder routes to demonstrate functionality
-@app.route('/api/health')
-def health_check_duplicate():
-    return jsonify({
-        "status": "healthy",
-        "environment": os.environ.get('FLASK_ENV', 'Not Set')
-    }), 200
+    try:
+        return render_template("index.html")
+    except Exception as e:
+        logger.error(f"Home route error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Could not render home template",
+            "error": str(e)
+        }), 500
 
 # Ensure debug mode is off in production
 app.debug = False
