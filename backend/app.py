@@ -38,11 +38,16 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = os.environ.get('PROJECT_ROOT', '/opt/render/project/src')
 FRONTEND_PATH = os.path.join(PROJECT_ROOT, 'frontend')
 BACKEND_PATH = os.path.join(PROJECT_ROOT, 'backend')
+UPLOAD_FOLDER = os.path.join(BACKEND_PATH, 'uploads')
+
+# Ensure upload directory exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Logging system configuration
 logger.info(f"Project Root: {PROJECT_ROOT}")
 logger.info(f"Frontend Path: {FRONTEND_PATH}")
 logger.info(f"Backend Path: {BACKEND_PATH}")
+logger.info(f"Upload Folder: {UPLOAD_FOLDER}")
 logger.info(f"Current Working Directory: {os.getcwd()}")
 
 # Comprehensive file and path diagnostics
@@ -52,6 +57,7 @@ def diagnose_project_structure():
             'project_root_exists': os.path.exists(PROJECT_ROOT),
             'frontend_path_exists': os.path.exists(FRONTEND_PATH),
             'backend_path_exists': os.path.exists(BACKEND_PATH),
+            'upload_folder_exists': os.path.exists(UPLOAD_FOLDER),
             'frontend_files': os.listdir(FRONTEND_PATH) if os.path.exists(FRONTEND_PATH) else [],
             'backend_files': os.listdir(BACKEND_PATH) if os.path.exists(BACKEND_PATH) else []
         }
@@ -63,13 +69,16 @@ app = Flask(__name__,
             static_folder=FRONTEND_PATH,
             template_folder=FRONTEND_PATH)
 
+# Configuration
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SECRET_KEY'] = os.urandom(24)
+
 # Simplified CORS configuration
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Optional CSRF protection
 try:
     csrf = CSRFProtect(app)
-    app.secret_key = os.urandom(24)
 except Exception as e:
     logger.warning(f"CSRF protection could not be initialized: {e}")
 
@@ -86,33 +95,8 @@ def dependency_fallback(func):
             }), 500
     return wrapper
 
-# Health check with comprehensive system information
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    try:
-        return jsonify({
-            "status": "healthy",
-            "message": "Backend is running",
-            "python_version": sys.version,
-            "dependencies": {
-                "PyPDF2": bool(PyPDF2),
-                "pdfminer": bool(extract_text),
-                "sumy": bool(Tokenizer)
-            },
-            "project_structure": diagnose_project_structure(),
-            "environment": os.environ.get('FLASK_ENV', 'Not Set')
-        }), 200
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return jsonify({
-            "status": "error",
-            "message": "Health check failed",
-            "error": str(e)
-        }), 500
-
 # Home route with comprehensive error handling
 @app.route('/')
-@dependency_fallback
 def home():
     try:
         # Multiple rendering strategies
@@ -144,6 +128,30 @@ def home():
             "message": "Could not render home template",
             "error": str(e),
             "project_structure": diagnose_project_structure()
+        }), 500
+
+# Health check with comprehensive system information
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    try:
+        return jsonify({
+            "status": "healthy",
+            "message": "Backend is running",
+            "python_version": sys.version,
+            "dependencies": {
+                "PyPDF2": bool(PyPDF2),
+                "pdfminer": bool(extract_text),
+                "sumy": bool(Tokenizer)
+            },
+            "project_structure": diagnose_project_structure(),
+            "environment": os.environ.get('FLASK_ENV', 'Not Set')
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Health check failed",
+            "error": str(e)
         }), 500
 
 # Ensure debug mode is off in production
