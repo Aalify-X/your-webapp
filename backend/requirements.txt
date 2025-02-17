@@ -12,4 +12,4 @@ werkzeug==2.3.6
 transformers==4.30.2
 torch==2.0.1
 sentencepiece==0.1.99
-python3-logging
+# Logging is built-in with Python standard library, no need to specify
