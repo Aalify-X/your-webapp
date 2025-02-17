@@ -34,84 +34,34 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Diagnostic function to log system paths
-def log_system_paths():
-    paths = {
-        'Current Working Directory': os.getcwd(),
-        'Python Path': sys.path,
-        'Project Root': os.environ.get('PROJECT_ROOT', 'Not Set'),
-        'Possible Frontend Paths': [
-            '/opt/render/project/src/frontend',
-            '/opt/render/project/frontend',
-            '../frontend',
-            'frontend'
-        ]
-    }
-    
-    for key, value in paths.items():
-        logger.info(f"{key}: {value}")
+# Absolute paths for deployment
+PROJECT_ROOT = os.environ.get('PROJECT_ROOT', '/opt/render/project/src')
+FRONTEND_PATH = os.path.join(PROJECT_ROOT, 'frontend')
+BACKEND_PATH = os.path.join(PROJECT_ROOT, 'backend')
 
-# Log system paths at startup
-log_system_paths()
+# Logging system configuration
+logger.info(f"Project Root: {PROJECT_ROOT}")
+logger.info(f"Frontend Path: {FRONTEND_PATH}")
+logger.info(f"Backend Path: {BACKEND_PATH}")
+logger.info(f"Current Working Directory: {os.getcwd()}")
 
-# Comprehensive frontend path and template search
-def find_and_log_frontend_files():
-    search_paths = [
-        '/opt/render/project/src/frontend',
-        '/opt/render/project/frontend',
-        os.path.abspath('../frontend'),
-        os.path.abspath('frontend'),
-        os.path.join(os.getcwd(), 'frontend')
-    ]
-    
-    found_files = {}
-    
-    for path in search_paths:
-        try:
-            if os.path.exists(path):
-                files = os.listdir(path)
-                found_files[path] = {
-                    'exists': True,
-                    'files': files,
-                    'index_html_exists': 'index.html' in files
-                }
-                
-                # Log detailed file information
-                logger.info(f"Path: {path}")
-                logger.info(f"Files: {files}")
-                logger.info(f"Index HTML exists: {'index.html' in files}")
-        except Exception as e:
-            found_files[path] = {
-                'exists': False,
-                'error': str(e)
-            }
-            logger.error(f"Error searching path {path}: {e}")
-    
-    return found_files
+# Comprehensive file and path diagnostics
+def diagnose_project_structure():
+    try:
+        return {
+            'project_root_exists': os.path.exists(PROJECT_ROOT),
+            'frontend_path_exists': os.path.exists(FRONTEND_PATH),
+            'backend_path_exists': os.path.exists(BACKEND_PATH),
+            'frontend_files': os.listdir(FRONTEND_PATH) if os.path.exists(FRONTEND_PATH) else [],
+            'backend_files': os.listdir(BACKEND_PATH) if os.path.exists(BACKEND_PATH) else []
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
-# Determine the most likely frontend path
-def find_frontend_path():
-    possible_paths = [
-        '/opt/render/project/src/frontend',
-        '/opt/render/project/frontend',
-        os.path.abspath('../frontend'),
-        os.path.abspath('frontend')
-    ]
-    
-    for path in possible_paths:
-        index_path = os.path.join(path, 'index.html')
-        if os.path.exists(index_path):
-            logger.info(f"Found frontend path: {path}")
-            return path
-    
-    logger.error("Could not find frontend path")
-    return None
-
-# Initialize Flask with flexible path detection
-frontend_path = find_frontend_path()
+# Initialize Flask with explicit paths
 app = Flask(__name__, 
-            static_folder='/opt/render/project/src/frontend',  # Explicit static folder
-            template_folder='/opt/render/project/src/frontend')  # Explicit template folder
+            static_folder=FRONTEND_PATH,
+            template_folder=FRONTEND_PATH)
 
 # Simplified CORS configuration
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -149,7 +99,7 @@ def health_check():
                 "pdfminer": bool(extract_text),
                 "sumy": bool(Tokenizer)
             },
-            "frontend_path": frontend_path,
+            "project_structure": diagnose_project_structure(),
             "environment": os.environ.get('FLASK_ENV', 'Not Set')
         }), 200
     except Exception as e:
@@ -165,40 +115,25 @@ def health_check():
 @dependency_fallback
 def home():
     try:
-        # First, log all potential frontend files
-        frontend_files = find_and_log_frontend_files()
-        
         # Multiple rendering strategies
-        rendering_strategies = [
-            # Strategy 1: Absolute path from environment
-            lambda: render_template('/opt/render/project/src/frontend/index.html'),
-            
-            # Strategy 2: Relative path
-            lambda: render_template('../frontend/index.html'),
-            
-            # Strategy 3: Current directory
-            lambda: render_template('frontend/index.html'),
-            
-            # Fallback strategy: Return JSON with diagnostic information
-            lambda: jsonify({
-                "status": "error",
-                "message": "Could not render template",
-                "frontend_files": frontend_files
-            })
+        possible_paths = [
+            os.path.join(FRONTEND_PATH, 'index.html'),
+            '../frontend/index.html',
+            'frontend/index.html'
         ]
         
-        # Try each rendering strategy
-        for strategy in rendering_strategies:
+        for template_path in possible_paths:
             try:
-                return strategy()
-            except Exception as strategy_error:
-                logger.error(f"Rendering strategy failed: {strategy_error}")
+                if os.path.exists(template_path):
+                    return render_template(template_path)
+            except Exception as path_error:
+                logger.error(f"Error rendering {template_path}: {path_error}")
         
-        # If all strategies fail
+        # If no template found, return diagnostic information
         return jsonify({
             "status": "error",
-            "message": "All template rendering strategies failed",
-            "frontend_files": frontend_files
+            "message": "Could not find index.html",
+            "project_structure": diagnose_project_structure()
         }), 500
     
     except Exception as e:
@@ -206,19 +141,15 @@ def home():
         logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
-            "message": "Unexpected template rendering error",
-            "error": str(e)
+            "message": "Could not render home template",
+            "error": str(e),
+            "project_structure": diagnose_project_structure()
         }), 500
-
-# Additional logging for template configuration
-logger.info(f"Static Folder: {app.static_folder}")
-logger.info(f"Template Folder: {app.template_folder}")
-logger.info(f"Current Working Directory: {os.getcwd()}")
 
 # Ensure debug mode is off in production
 app.debug = False
 
-# Add port configuration from environment
+# Use environment-specified port or default
 port = int(os.environ.get('PORT', 5000))
 
 if __name__ == '__main__':
