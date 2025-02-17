@@ -7,13 +7,15 @@ services:
     . venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt
+    echo "Project Structure:"
     pwd
-    ls -R /opt/render/project/src
+    echo "Frontend Directory Contents:"
+    ls -l /opt/render/project/src/frontend
   startCommand: |
     cd /opt/render/project/src/backend
+    echo "Backend Directory Contents:"
     pwd
     ls
-    ls ../frontend
     gunicorn --workers 4 --threads 2 app:app
   envVars:
   - key: PYTHON_VERSION

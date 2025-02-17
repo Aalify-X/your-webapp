@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Absolute paths for deployment
 PROJECT_ROOT = os.environ.get('PROJECT_ROOT', '/opt/render/project/src')
-FRONTEND_PATH = os.path.join(PROJECT_ROOT, 'frontend')
+FRONTEND_PATH = os.path.join(PROJECT_ROOT, 'frontend')  # Explicitly point to frontend directory
 BACKEND_PATH = os.path.join(PROJECT_ROOT, 'backend')
 UPLOAD_FOLDER = os.path.join(BACKEND_PATH, 'uploads')
 
@@ -73,8 +73,10 @@ def find_index_html():
         str or None: Full path to index.html if found, None otherwise
     """
     search_paths = [
+        # Explicitly prioritize frontend directory
+        os.path.join(FRONTEND_PATH, 'index.html'),
+        
         # Render.com specific paths
-        '/opt/render/project/src/frontend/index.html',
         '/opt/render/project/frontend/index.html',
         
         # Relative paths
@@ -82,11 +84,7 @@ def find_index_html():
         os.path.join(os.getcwd(), 'frontend', 'index.html'),
         
         # Absolute paths from project root
-        os.path.join(PROJECT_ROOT, 'frontend', 'index.html'),
-        
-        # Local development paths
-        os.path.abspath('../frontend/index.html'),
-        os.path.abspath('frontend/index.html')
+        os.path.join(PROJECT_ROOT, 'frontend', 'index.html')
     ]
     
     # Log all search paths for diagnostics
@@ -100,10 +98,10 @@ def find_index_html():
     logger.error("Could not find index.html in any of the search paths")
     return None
 
-# Initialize Flask with explicit paths
+# Initialize Flask with explicit frontend path
 app = Flask(__name__, 
-            static_folder=FRONTEND_PATH,
-            template_folder=FRONTEND_PATH)
+            static_folder=FRONTEND_PATH,  # Explicitly set to frontend directory
+            template_folder=FRONTEND_PATH)  # Explicitly set to frontend directory
 
 # Configuration
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
