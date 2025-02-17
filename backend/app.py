@@ -19,6 +19,13 @@ from sumy.utils import get_stop_words
 from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
 
+try:
+    from transformers import pipeline
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    pipeline = None
+
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -43,19 +50,17 @@ except Exception as e:
     print(f"Could not download NLTK resources: {e}")
 
 # Optional NLP imports with fallbacks
-summarizer = None
-question_generator = None
 
-# Try to import transformers if available
-try:
-    from transformers import pipeline
-    try:
-        summarizer = pipeline("summarization", model="t5-small")
-        question_generator = pipeline("text2text-generation", model="t5-small")
-    except Exception as e:
-        print(f"Transformers pipeline loading failed: {e}")
-except ImportError:
-    print("Transformers not available. Using fallback text processing methods.")
+def get_summarizer():
+    if TRANSFORMERS_AVAILABLE:
+        try:
+            return pipeline("summarization", model="t5-small")
+        except Exception as e:
+            print(f"Could not load summarization pipeline: {e}")
+            return None
+    return None
+
+summarizer = get_summarizer() if TRANSFORMERS_AVAILABLE else None
 
 # Fallback functions for text processing
 def extract_key_topics_fallback(text, top_n=5):
@@ -80,13 +85,21 @@ def fallback_generate_questions(text, num_questions=2):
     sentences = sent_tokenize(text)
     return [f"What is the main point of: {sent}?" for sent in sentences[:num_questions]]
 
+def summarize_text(text, max_length=150, min_length=50):
+    if summarizer and TRANSFORMERS_AVAILABLE:
+        try:
+            summary = summarizer(text, max_length=max_length, min_length=min_length, do_sample=False)
+            return summary[0]['summary_text'] if summary else text
+        except Exception as e:
+            print(f"Summarization failed: {e}")
+    
+    # Fallback to existing fallback_summarize method
+    return fallback_summarize(text)
+
 # Configuration
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Summarization pipeline using HuggingFace Transformers
-summarizer = pipeline("summarization", model="t5-small")
 
 # Function to check if the file is allowed
 def allowed_file(filename):
@@ -138,8 +151,7 @@ def upload_pdf():
             
             if text:
                 # Summarize the extracted text
-                summary = summarizer(text, max_length=150, min_length=50, do_sample=False)
-                summarized_text = summary[0]['summary_text']
+                summarized_text = summarize_text(text)
                 
                 # Save the summarized text in the session for later use
                 session['summarized_text'] = summarized_text

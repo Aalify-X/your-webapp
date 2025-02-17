@@ -1,11 +1,14 @@
 services:
-    - type: web
-      name: progrify-backend
-      env: python
-      buildCommand: pip install -r requirements.txt
-      startCommand: gunicorn app:app
-      envVars:
-      - key: PYTHON_VERSION
-        value: 3.9.18
-      - key: FLASK_ENV
-        value: production
+- type: web
+  name: progrify-backend
+  env: python
+  buildCommand: |
+    python -m venv venv
+    . venv/bin/activate
+    pip install -r requirements.txt
+  startCommand: gunicorn app:app
+  envVars:
+  - key: PYTHON_VERSION
+    value: 3.11.9
+  - key: FLASK_ENV
+    value: production
