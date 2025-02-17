@@ -21,6 +21,7 @@ from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
 import logging
 import traceback
+from jinja2 import FileSystemLoader
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -33,11 +34,22 @@ try:
 except ImportError:
     pipeline = None
 
-# Initialize Flask app
+# Initialize Flask app with explicit template and static configurations
 app = Flask(__name__, 
             static_folder='../frontend', 
             template_folder='../frontend')
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Configure Jinja2 template loader
+app.jinja_loader = FileSystemLoader([
+    '../frontend',  # Primary template directory
+    'templates'     # Fallback directory
+])
+
+CORS(app, resources={
+    r"/api/*": {"origins": "*"},
+    r"/": {"origins": "*"}
+})
+
 csrf = CSRFProtect(app)
 app.secret_key = os.urandom(24)
 
@@ -75,21 +87,41 @@ def health_check():
             "error": str(e)
         }), 500
 
-# Add a simple route for testing
+# Home route with enhanced error handling
 @app.route("/")
 def home():
     try:
-        # Try to render index.html from frontend directory
+        # Explicitly check for base.html
+        base_template = os.path.join('../frontend', 'base.html')
+        index_template = os.path.join('../frontend', 'index.html')
+        
+        if not os.path.exists(base_template):
+            logger.error(f"Base template not found: {base_template}")
+            return jsonify({
+                "status": "error",
+                "message": "Base template missing",
+                "template_path": base_template
+            }), 500
+        
+        if not os.path.exists(index_template):
+            logger.error(f"Index template not found: {index_template}")
+            return jsonify({
+                "status": "error",
+                "message": "Index template missing",
+                "template_path": index_template
+            }), 500
+        
         return render_template("index.html")
     except Exception as e:
         logger.error(f"Template rendering error: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
             "message": "Could not render template",
             "error": str(e)
         }), 500
 
-# Add route to list available templates (for debugging)
+# Add a simple route for testing
 @app.route("/list-templates")
 def list_templates():
     import os
