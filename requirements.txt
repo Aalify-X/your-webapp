@@ -1,0 +1,8 @@
+# Project-wide Python Dependencies
+flask==2.3.2
+gunicorn==20.1.0
+flask-cors==4.0.0
+python-dotenv==1.0.0
+
+# Backend Specific
+-r backend/requirements.txt

@@ -31,8 +31,14 @@ except ImportError:
     PlaintextParser = None
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, 
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('deployment.log')
+    ]
+)
 logger = logging.getLogger(__name__)
 
 # Absolute paths for deployment
@@ -293,6 +299,10 @@ def dependency_fallback(func):
             }), 500
     return wrapper
 
+logger.info(f"Current Working Directory: {os.getcwd()}")
+logger.info(f"Python Path: {sys.executable}")
+logger.info(f"Port: {os.environ.get('PORT', 10000)}")
+
 # Aggressive index.html serving with maximum diagnostics
 @app.route('/')
 def home():
@@ -419,7 +429,7 @@ def health_check():
 app.debug = False
 
 # Use environment-specified port or default
-port = int(os.environ.get('PORT', 5000))
+port = int(os.environ.get('PORT', 10000))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port)
