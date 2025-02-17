@@ -64,6 +64,42 @@ def diagnose_project_structure():
     except Exception as e:
         return {"error": str(e)}
 
+# Comprehensive path and file discovery function
+def find_index_html():
+    """
+    Systematically search for index.html across multiple potential locations.
+    
+    Returns:
+        str or None: Full path to index.html if found, None otherwise
+    """
+    search_paths = [
+        # Render.com specific paths
+        '/opt/render/project/src/frontend/index.html',
+        '/opt/render/project/frontend/index.html',
+        
+        # Relative paths
+        os.path.join(os.getcwd(), '..', 'frontend', 'index.html'),
+        os.path.join(os.getcwd(), 'frontend', 'index.html'),
+        
+        # Absolute paths from project root
+        os.path.join(PROJECT_ROOT, 'frontend', 'index.html'),
+        
+        # Local development paths
+        os.path.abspath('../frontend/index.html'),
+        os.path.abspath('frontend/index.html')
+    ]
+    
+    # Log all search paths for diagnostics
+    logger.info("Searching for index.html in the following paths:")
+    for path in search_paths:
+        logger.info(f"Checking path: {path}")
+        if os.path.exists(path):
+            logger.info(f"Found index.html at: {path}")
+            return path
+    
+    logger.error("Could not find index.html in any of the search paths")
+    return None
+
 # Initialize Flask with explicit paths
 app = Flask(__name__, 
             static_folder=FRONTEND_PATH,
@@ -95,29 +131,35 @@ def dependency_fallback(func):
             }), 500
     return wrapper
 
-# Home route with comprehensive error handling
+# Home route with comprehensive error handling and path discovery
 @app.route('/')
 def home():
     try:
-        # Multiple rendering strategies
-        possible_paths = [
-            os.path.join(FRONTEND_PATH, 'index.html'),
-            '../frontend/index.html',
-            'frontend/index.html'
-        ]
+        # Attempt to find index.html
+        index_path = find_index_html()
         
-        for template_path in possible_paths:
+        if index_path:
             try:
-                if os.path.exists(template_path):
-                    return render_template(template_path)
-            except Exception as path_error:
-                logger.error(f"Error rendering {template_path}: {path_error}")
+                return render_template(index_path)
+            except Exception as render_error:
+                logger.error(f"Error rendering {index_path}: {render_error}")
         
-        # If no template found, return diagnostic information
+        # Fallback diagnostic response
         return jsonify({
             "status": "error",
-            "message": "Could not find index.html",
-            "project_structure": diagnose_project_structure()
+            "message": "Could not locate or render index.html",
+            "project_structure": {
+                "search_paths": [
+                    '/opt/render/project/src/frontend',
+                    '/opt/render/project/frontend',
+                    os.path.join(os.getcwd(), '..', 'frontend'),
+                    os.path.join(os.getcwd(), 'frontend')
+                ],
+                "current_directory": os.getcwd(),
+                "project_root": PROJECT_ROOT,
+                "frontend_path": FRONTEND_PATH,
+                "backend_path": BACKEND_PATH
+            }
         }), 500
     
     except Exception as e:
@@ -125,7 +167,7 @@ def home():
         logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
-            "message": "Could not render home template",
+            "message": "Unexpected error in home route",
             "error": str(e),
             "project_structure": diagnose_project_structure()
         }), 500
