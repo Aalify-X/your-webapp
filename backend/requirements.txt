@@ -4,12 +4,9 @@ flask-wtf==1.1.1
 gunicorn==20.1.0
 requests==2.31.0
 python-dotenv==1.0.0
-PyPDF2==3.0.1
 nltk==3.8.1
-pdfminer.six==20221105
 sumy==0.11.0
-werkzeug==2.3.6
-transformers==4.30.2
-torch==2.0.1
-sentencepiece==0.1.99
 # Logging is built-in with Python standard library, no need to specify
+# Optional ML dependencies (comment out if causing issues)
+# transformers==4.30.2
+# torch==2.0.1
