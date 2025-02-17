@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app with explicit configurations
 app = Flask(__name__, 
-            static_folder='../frontend', 
-            template_folder='../frontend')
+            static_folder='/opt/render/project/src/frontend', 
+            template_folder='/opt/render/project/src/frontend')
 
 # Simplified CORS configuration
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -89,7 +89,8 @@ def health_check():
 @dependency_fallback
 def home():
     try:
-        return render_template("index.html")
+        # Use absolute path for template
+        return render_template('/opt/render/project/src/frontend/index.html')
     except Exception as e:
         logger.error(f"Home route error: {e}")
         return jsonify({
@@ -97,6 +98,10 @@ def home():
             "message": "Could not render home template",
             "error": str(e)
         }), 500
+
+# Ensure static and template paths are correctly set
+app.static_folder = '/opt/render/project/src/frontend'
+app.template_folder = '/opt/render/project/src/frontend'
 
 # Ensure debug mode is off in production
 app.debug = False
