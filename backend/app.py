@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, url_for, fl
 from flask_cors import CORS
 from flask_wtf import CSRFProtect
 import os
+import sys
 import time
 import base64
 from werkzeug.utils import secure_filename
@@ -19,11 +20,10 @@ from sumy.utils import get_stop_words
 from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
 
+# Safely import transformers
 try:
     from transformers import pipeline
-    TRANSFORMERS_AVAILABLE = True
 except ImportError:
-    TRANSFORMERS_AVAILABLE = False
     pipeline = None
 
 # Initialize Flask app
@@ -35,7 +35,12 @@ app.secret_key = os.urandom(24)
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "healthy", "message": "Backend is running"}), 200
+    return jsonify({
+        "status": "healthy", 
+        "message": "Backend is running",
+        "python_version": sys.version,
+        "transformers_available": pipeline is not None
+    }), 200
 
 # Add a simple route for testing
 @app.route("/")
@@ -52,17 +57,25 @@ except Exception as e:
 # Optional NLP imports with fallbacks
 
 def get_summarizer():
-    if TRANSFORMERS_AVAILABLE:
+    if pipeline:
         try:
             return pipeline("summarization", model="t5-small")
         except Exception as e:
             print(f"Could not load summarization pipeline: {e}")
-            return None
     return None
 
-summarizer = get_summarizer() if TRANSFORMERS_AVAILABLE else None
+def summarize_text(text, max_length=150, min_length=50):
+    summarizer = get_summarizer()
+    if summarizer:
+        try:
+            summary = summarizer(text, max_length=max_length, min_length=min_length, do_sample=False)
+            return summary[0]['summary_text'] if summary else text
+        except Exception as e:
+            print(f"Summarization failed: {e}")
+    
+    # Fallback to existing fallback_summarize method
+    return fallback_summarize(text)
 
-# Fallback functions for text processing
 def extract_key_topics_fallback(text, top_n=5):
     """Extract key topics using basic NLTK processing."""
     try:
@@ -84,17 +97,6 @@ def fallback_generate_questions(text, num_questions=2):
     """Generate basic questions if no ML model is available."""
     sentences = sent_tokenize(text)
     return [f"What is the main point of: {sent}?" for sent in sentences[:num_questions]]
-
-def summarize_text(text, max_length=150, min_length=50):
-    if summarizer and TRANSFORMERS_AVAILABLE:
-        try:
-            summary = summarizer(text, max_length=max_length, min_length=min_length, do_sample=False)
-            return summary[0]['summary_text'] if summary else text
-        except Exception as e:
-            print(f"Summarization failed: {e}")
-    
-    # Fallback to existing fallback_summarize method
-    return fallback_summarize(text)
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
