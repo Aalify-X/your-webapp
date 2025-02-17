@@ -129,46 +129,86 @@ def dependency_fallback(func):
             }), 500
     return wrapper
 
-# Home route with comprehensive error handling and path discovery
-@app.route('/')
-def home():
+# Comprehensive index.html rendering function
+def render_index_html():
+    """
+    Attempt to render index.html with comprehensive error handling and diagnostics.
+    
+    Returns:
+        Flask response or error JSON
+    """
     try:
-        # Attempt to find index.html
+        # Explicitly check file contents and permissions
         index_path = find_index_html()
         
-        if index_path:
-            try:
-                return render_template(index_path)
-            except Exception as render_error:
-                logger.error(f"Error rendering {index_path}: {render_error}")
-        
-        # Fallback diagnostic response
-        return jsonify({
-            "status": "error",
-            "message": "Could not locate or render index.html",
-            "project_structure": {
+        if not index_path:
+            logger.error("No index.html found in any search path")
+            return jsonify({
+                "status": "error",
+                "message": "index.html not found",
                 "search_paths": [
-                    '/opt/render/project/src/frontend',
-                    '/opt/render/project/frontend',
-                    os.path.join(os.getcwd(), '..', 'frontend'),
-                    os.path.join(os.getcwd(), 'frontend')
-                ],
-                "current_directory": os.getcwd(),
-                "project_root": PROJECT_ROOT,
-                "frontend_path": FRONTEND_PATH,
-                "backend_path": BACKEND_PATH
-            }
-        }), 500
+                    '/opt/render/project/src/frontend/index.html',
+                    os.path.join(os.getcwd(), '..', 'frontend', 'index.html'),
+                    os.path.join(PROJECT_ROOT, 'frontend', 'index.html')
+                ]
+            }), 404
+        
+        # Detailed file diagnostics
+        try:
+            with open(index_path, 'r') as f:
+                file_contents = f.read()
+                logger.info(f"index.html file size: {len(file_contents)} bytes")
+                
+                # Basic content validation
+                if len(file_contents.strip()) == 0:
+                    logger.error(f"index.html is empty: {index_path}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "index.html is empty",
+                        "file_path": index_path
+                    }), 500
+        except PermissionError:
+            logger.error(f"Permission denied reading {index_path}")
+            return jsonify({
+                "status": "error", 
+                "message": "Cannot read index.html",
+                "file_path": index_path
+            }), 403
+        except Exception as read_error:
+            logger.error(f"Error reading index.html: {read_error}")
+            return jsonify({
+                "status": "error",
+                "message": f"Error reading index.html: {str(read_error)}",
+                "file_path": index_path
+            }), 500
+        
+        # Attempt template rendering
+        try:
+            return render_template(index_path)
+        except Exception as render_error:
+            logger.error(f"Template rendering error for {index_path}: {render_error}")
+            logger.error(traceback.format_exc())
+            return jsonify({
+                "status": "error",
+                "message": "Failed to render index.html",
+                "error": str(render_error),
+                "file_path": index_path,
+                "file_contents": file_contents[:500]  # Partial contents for debugging
+            }), 500
     
     except Exception as e:
-        logger.error(f"Comprehensive home route error: {e}")
+        logger.error(f"Unexpected error in index.html rendering: {e}")
         logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
-            "message": "Unexpected error in home route",
-            "error": str(e),
-            "project_structure": diagnose_project_structure()
+            "message": "Catastrophic failure rendering index.html",
+            "error": str(e)
         }), 500
+
+# Home route with comprehensive error handling
+@app.route('/')
+def home():
+    return render_index_html()
 
 # Health check with comprehensive system information
 @app.route('/api/health', methods=['GET'])
