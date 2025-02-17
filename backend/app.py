@@ -293,10 +293,74 @@ def dependency_fallback(func):
             }), 500
     return wrapper
 
-# Home route with comprehensive error handling
+# Direct file serving for index.html
 @app.route('/')
 def home():
-    return render_index_html()
+    try:
+        # Extensive filesystem diagnostics
+        filesystem_info = diagnose_filesystem()
+        logger.info(f"Filesystem Diagnostics: {json.dumps(filesystem_info, indent=2)}")
+        
+        # Explicitly find index.html
+        index_path = find_index_html()
+        
+        if not index_path:
+            logger.error("No index.html found in any search path")
+            return jsonify({
+                "status": "error",
+                "message": "index.html not found",
+                "filesystem_info": filesystem_info,
+                "search_paths": [
+                    '/opt/render/project/src/frontend/index.html',
+                    os.path.join(os.getcwd(), '..', 'frontend', 'index.html'),
+                    os.path.join(PROJECT_ROOT, 'frontend', 'index.html')
+                ]
+            }), 404
+        
+        # Detailed file diagnostics
+        try:
+            with open(index_path, 'r') as f:
+                file_contents = f.read()
+                logger.info(f"index.html file size: {len(file_contents)} bytes")
+                
+                # Comprehensive content validation
+                if len(file_contents.strip()) == 0:
+                    logger.error(f"index.html is empty: {index_path}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "index.html is empty",
+                        "file_path": index_path,
+                        "filesystem_info": filesystem_info
+                    }), 500
+        except PermissionError:
+            logger.error(f"Permission denied reading {index_path}")
+            return jsonify({
+                "status": "error", 
+                "message": "Cannot read index.html",
+                "file_path": index_path,
+                "filesystem_info": filesystem_info
+            }), 403
+        except Exception as read_error:
+            logger.error(f"Error reading index.html: {read_error}")
+            return jsonify({
+                "status": "error",
+                "message": f"Error reading index.html: {str(read_error)}",
+                "file_path": index_path,
+                "filesystem_info": filesystem_info
+            }), 500
+        
+        # Directly send file contents
+        return file_contents, 200, {'Content-Type': 'text/html'}
+    
+    except Exception as e:
+        logger.error(f"Unexpected error in home route: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "status": "error",
+            "message": "Catastrophic failure serving index.html",
+            "error": str(e),
+            "filesystem_info": diagnose_filesystem()
+        }), 500
 
 # Health check with comprehensive system information
 @app.route('/api/health', methods=['GET'])
