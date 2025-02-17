@@ -54,6 +54,41 @@ def log_system_paths():
 # Log system paths at startup
 log_system_paths()
 
+# Comprehensive frontend path and template search
+def find_and_log_frontend_files():
+    search_paths = [
+        '/opt/render/project/src/frontend',
+        '/opt/render/project/frontend',
+        os.path.abspath('../frontend'),
+        os.path.abspath('frontend'),
+        os.path.join(os.getcwd(), 'frontend')
+    ]
+    
+    found_files = {}
+    
+    for path in search_paths:
+        try:
+            if os.path.exists(path):
+                files = os.listdir(path)
+                found_files[path] = {
+                    'exists': True,
+                    'files': files,
+                    'index_html_exists': 'index.html' in files
+                }
+                
+                # Log detailed file information
+                logger.info(f"Path: {path}")
+                logger.info(f"Files: {files}")
+                logger.info(f"Index HTML exists: {'index.html' in files}")
+        except Exception as e:
+            found_files[path] = {
+                'exists': False,
+                'error': str(e)
+            }
+            logger.error(f"Error searching path {path}: {e}")
+    
+    return found_files
+
 # Determine the most likely frontend path
 def find_frontend_path():
     possible_paths = [
@@ -75,8 +110,8 @@ def find_frontend_path():
 # Initialize Flask with flexible path detection
 frontend_path = find_frontend_path()
 app = Flask(__name__, 
-            static_folder=frontend_path, 
-            template_folder=frontend_path)
+            static_folder='/opt/render/project/src/frontend',  # Explicit static folder
+            template_folder='/opt/render/project/src/frontend')  # Explicit template folder
 
 # Simplified CORS configuration
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -130,16 +165,40 @@ def health_check():
 @dependency_fallback
 def home():
     try:
-        if frontend_path:
-            index_path = os.path.join(frontend_path, 'index.html')
-            if os.path.exists(index_path):
-                return render_template(index_path)
+        # First, log all potential frontend files
+        frontend_files = find_and_log_frontend_files()
         
-        # Fallback error response
+        # Multiple rendering strategies
+        rendering_strategies = [
+            # Strategy 1: Absolute path from environment
+            lambda: render_template('/opt/render/project/src/frontend/index.html'),
+            
+            # Strategy 2: Relative path
+            lambda: render_template('../frontend/index.html'),
+            
+            # Strategy 3: Current directory
+            lambda: render_template('frontend/index.html'),
+            
+            # Fallback strategy: Return JSON with diagnostic information
+            lambda: jsonify({
+                "status": "error",
+                "message": "Could not render template",
+                "frontend_files": frontend_files
+            })
+        ]
+        
+        # Try each rendering strategy
+        for strategy in rendering_strategies:
+            try:
+                return strategy()
+            except Exception as strategy_error:
+                logger.error(f"Rendering strategy failed: {strategy_error}")
+        
+        # If all strategies fail
         return jsonify({
             "status": "error",
-            "message": "Could not locate frontend template",
-            "frontend_path": frontend_path
+            "message": "All template rendering strategies failed",
+            "frontend_files": frontend_files
         }), 500
     
     except Exception as e:
@@ -147,18 +206,14 @@ def home():
         logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
-            "message": "Template rendering failed",
-            "error": str(e),
-            "frontend_path": frontend_path
+            "message": "Unexpected template rendering error",
+            "error": str(e)
         }), 500
 
-# Ensure debug information is logged
-logger.info(f"Static folder: {app.static_folder}")
-logger.info(f"Template folder: {app.template_folder}")
-
-# Ensure static and template paths are correctly set
-app.static_folder = app.static_folder
-app.template_folder = app.template_folder
+# Additional logging for template configuration
+logger.info(f"Static Folder: {app.static_folder}")
+logger.info(f"Template Folder: {app.template_folder}")
+logger.info(f"Current Working Directory: {os.getcwd()}")
 
 # Ensure debug mode is off in production
 app.debug = False
