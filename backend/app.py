@@ -293,73 +293,102 @@ def dependency_fallback(func):
             }), 500
     return wrapper
 
-# Direct file serving for index.html
+# Aggressive index.html serving with maximum diagnostics
 @app.route('/')
 def home():
     try:
-        # Extensive filesystem diagnostics
-        filesystem_info = diagnose_filesystem()
-        logger.info(f"Filesystem Diagnostics: {json.dumps(filesystem_info, indent=2)}")
+        # Extreme logging of system environment
+        logger.info("ENVIRONMENT VARIABLES:")
+        for key, value in os.environ.items():
+            logger.info(f"{key}: {value}")
         
-        # Explicitly find index.html
-        index_path = find_index_html()
+        # Comprehensive path exploration
+        potential_paths = [
+            # Render.com specific paths
+            '/opt/render/project/src/frontend/index.html',
+            '/opt/render/project/frontend/index.html',
+            
+            # Relative paths
+            os.path.join(os.getcwd(), '..', 'frontend', 'index.html'),
+            os.path.join(os.getcwd(), 'frontend', 'index.html'),
+            
+            # Absolute paths from project root
+            os.path.join(PROJECT_ROOT, 'frontend', 'index.html'),
+            
+            # Local development paths
+            os.path.abspath('../frontend/index.html'),
+            os.path.abspath('frontend/index.html'),
+            
+            # Explicit paths
+            '/frontend/index.html',
+            'frontend/index.html',
+            'index.html'
+        ]
         
-        if not index_path:
-            logger.error("No index.html found in any search path")
-            return jsonify({
-                "status": "error",
-                "message": "index.html not found",
-                "filesystem_info": filesystem_info,
-                "search_paths": [
-                    '/opt/render/project/src/frontend/index.html',
-                    os.path.join(os.getcwd(), '..', 'frontend', 'index.html'),
-                    os.path.join(PROJECT_ROOT, 'frontend', 'index.html')
-                ]
-            }), 404
+        # Exhaustive path checking
+        found_path = None
+        for path in potential_paths:
+            logger.info(f"CHECKING PATH: {path}")
+            try:
+                if os.path.exists(path):
+                    logger.info(f"PATH EXISTS: {path}")
+                    found_path = path
+                    break
+            except Exception as path_error:
+                logger.error(f"Error checking path {path}: {path_error}")
         
-        # Detailed file diagnostics
-        try:
-            with open(index_path, 'r') as f:
-                file_contents = f.read()
-                logger.info(f"index.html file size: {len(file_contents)} bytes")
-                
-                # Comprehensive content validation
-                if len(file_contents.strip()) == 0:
-                    logger.error(f"index.html is empty: {index_path}")
-                    return jsonify({
-                        "status": "error",
-                        "message": "index.html is empty",
-                        "file_path": index_path,
-                        "filesystem_info": filesystem_info
-                    }), 500
-        except PermissionError:
-            logger.error(f"Permission denied reading {index_path}")
-            return jsonify({
-                "status": "error", 
-                "message": "Cannot read index.html",
-                "file_path": index_path,
-                "filesystem_info": filesystem_info
-            }), 403
-        except Exception as read_error:
-            logger.error(f"Error reading index.html: {read_error}")
-            return jsonify({
-                "status": "error",
-                "message": f"Error reading index.html: {str(read_error)}",
-                "file_path": index_path,
-                "filesystem_info": filesystem_info
-            }), 500
+        # Fallback to absolute paths if no path found
+        if not found_path:
+            try:
+                found_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'index.html')
+                logger.info(f"FALLBACK PATH: {found_path}")
+            except Exception as fallback_error:
+                logger.error(f"Fallback path error: {fallback_error}")
         
-        # Directly send file contents
-        return file_contents, 200, {'Content-Type': 'text/html'}
-    
-    except Exception as e:
-        logger.error(f"Unexpected error in home route: {e}")
-        logger.error(traceback.format_exc())
+        # Comprehensive file reading
+        if found_path:
+            try:
+                with open(found_path, 'r', encoding='utf-8') as f:
+                    file_contents = f.read()
+                    logger.info(f"FILE READ SUCCESSFULLY: {found_path}")
+                    logger.info(f"FILE SIZE: {len(file_contents)} bytes")
+                    
+                    # Debugging: log first 500 characters
+                    logger.info(f"FILE PREVIEW: {file_contents[:500]}")
+                    
+                    # Return file contents with explicit headers
+                    return file_contents, 200, {
+                        'Content-Type': 'text/html', 
+                        'X-File-Path': found_path
+                    }
+            except PermissionError:
+                logger.error(f"PERMISSION DENIED: {found_path}")
+            except FileNotFoundError:
+                logger.error(f"FILE NOT FOUND: {found_path}")
+            except Exception as read_error:
+                logger.error(f"FILE READ ERROR: {read_error}")
+        
+        # Ultimate fallback with comprehensive error response
         return jsonify({
             "status": "error",
-            "message": "Catastrophic failure serving index.html",
-            "error": str(e),
-            "filesystem_info": diagnose_filesystem()
+            "message": "Could not locate or read index.html",
+            "diagnostic_info": {
+                "current_directory": os.getcwd(),
+                "project_root": PROJECT_ROOT,
+                "frontend_path": FRONTEND_PATH,
+                "backend_path": BACKEND_PATH,
+                "checked_paths": potential_paths,
+                "environment": dict(os.environ)
+            }
+        }), 500
+    
+    except Exception as catastrophic_error:
+        logger.critical(f"CATASTROPHIC ERROR: {catastrophic_error}")
+        logger.critical(traceback.format_exc())
+        return jsonify({
+            "status": "critical_error",
+            "message": "Unhandled exception in home route",
+            "error": str(catastrophic_error)
         }), 500
 
 # Health check with comprehensive system information
