@@ -1,0 +1,11 @@
+flask
+flask-cors
+flask-wtf
+gunicorn
+requests
+python-dotenv
+PyPDF2
+nltk
+pdfminer.six
+sumy
+werkzeug
