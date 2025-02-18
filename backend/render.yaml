@@ -5,11 +5,9 @@ services:
   buildCommand: |
     python -m pip install --upgrade pip
     pip install -r requirements.txt
-  startCommand: gunicorn --bind 0.0.0.0:$PORT backend/app:app
+  startCommand: cd /opt/render/project/src && gunicorn --bind 0.0.0.0:$PORT app:app
   envVars:
   - key: PYTHON_VERSION
     value: 3.11.9
   - key: FLASK_ENV
     value: production
-  - key: PORT
-    value: 10000
