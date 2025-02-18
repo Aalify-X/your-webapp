@@ -1,29 +1,24 @@
-# Python
+echo "# Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-env/
 venv/
-.venv/
-ENV/
+*.log
 
-# Vercel
-.vercel/
+# Environment
+.env
+*.env
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/dist/
 
 # IDE
 .vscode/
-.idea/
+.vs/
 
-# Misc
-.DS_Store
-*.log
-*.swp
-
-# Virtual Environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Miscellaneous
+uploads/
+*.sqlite3
+.DS_Store" > .gitignore
