@@ -1,4 +1,10 @@
-flask==2.3.2
+echo "flask==2.3.2
 gunicorn==20.1.0
 flask-cors==4.0.0
 python-dotenv==1.0.0
+PyPDF2==3.0.1
+nltk==3.8.1
+pdfminer.six==20221105
+sumy==0.11.0
+python-multipart==0.0.9
+flask-wtf==1.2.1" > requirements.txt
