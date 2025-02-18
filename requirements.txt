@@ -7,4 +7,6 @@ nltk==3.8.1
 pdfminer.six==20221105
 sumy==0.11.0
 python-multipart==0.0.9
-flask-wtf==1.2.1" > requirements.txt
+flask-wtf==1.2.1
+spacy==3.7.4
+numpy==1.26.3" > requirements.txt
