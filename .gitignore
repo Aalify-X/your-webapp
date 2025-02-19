@@ -1,4 +1,4 @@
-echo "# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -9,10 +9,8 @@ venv/
 .env
 *.env
 
-# Frontend
+# Frontend - No dist or build (as per your setup)
 frontend/node_modules/
-frontend/build/
-frontend/dist/
 
 # IDE
 .vscode/
@@ -21,4 +19,4 @@ frontend/dist/
 # Miscellaneous
 uploads/
 *.sqlite3
-.DS_Store" > .gitignore
+.DS_Store
