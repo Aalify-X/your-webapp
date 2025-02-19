@@ -1,357 +1,696 @@
 from flask import Flask, render_template, request, jsonify, session, url_for, flash, redirect
-from flask_cors import CORS
 from flask_wtf import CSRFProtect
 import os
-import sys
 import time
 import base64
 from werkzeug.utils import secure_filename
+import PyPDF2
 import nltk
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from collections import Counter
+import re
+from pdfminer.high_level import extract_text
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
+from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
-import logging
-import traceback
-import json
-from flask import send_file, send_from_directory
 
-# Optional dependencies with fallback
+# Initialize Flask app
+app = Flask(_name_, static_folder='static')
+
+# Add CSRF protection
+csrf = CSRFProtect(app)
+app.secret_key = os.urandom(24)
+
+# Add a simple route for testing
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+# Download necessary NLTK resources
 try:
-    import PyPDF2
-    from pdfminer.high_level import extract_text
-    from sumy.nlp.tokenizers import Tokenizer
-    from sumy.summarizers.lsa import LsaSummarizer
-    from sumy.nlp.stemmers import Stemmer
-    from sumy.utils import get_stop_words
-    from sumy.parsers.plaintext import PlaintextParser
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+except Exception as e:
+    print(f"Could not download NLTK resources: {e}")
+
+# Optional NLP imports with fallbacks
+summarizer = None
+question_generator = None
+
+# Try to import transformers if available
+try:
+    from transformers import pipeline
+    try:
+        summarizer = pipeline("summarization", model="t5-small")
+        question_generator = pipeline("text2text-generation", model="t5-small")
+    except Exception as e:
+        print(f"Transformers pipeline loading failed: {e}")
 except ImportError:
-    PyPDF2 = None
-    extract_text = None
-    Tokenizer = None
-    LsaSummarizer = None
-    Stemmer = None
-    get_stop_words = None
-    PlaintextParser = None
+    print("Transformers not available. Using fallback text processing methods.")
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('deployment.log')
-    ]
-)
-logger = logging.getLogger(__name__)
-
-# Absolute paths for deployment
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
-FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
-UPLOAD_FOLDER = os.path.join(BACKEND_DIR, 'uploads')
-
-# Ensure upload directory exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# Logging system configuration
-logger.info(f"Project Root: {PROJECT_ROOT}")
-logger.info(f"Frontend Path: {FRONTEND_DIR}")
-logger.info(f"Backend Path: {BACKEND_DIR}")
-logger.info(f"Upload Folder: {UPLOAD_FOLDER}")
-logger.info(f"Current Working Directory: {os.getcwd()}")
-
-# Comprehensive file and path diagnostics
-def diagnose_project_structure():
+# Fallback functions for text processing
+def extract_key_topics_fallback(text, top_n=5):
+    """Extract key topics using basic NLTK processing."""
     try:
-        return {
-            'project_root_exists': os.path.exists(PROJECT_ROOT),
-            'frontend_path_exists': os.path.exists(FRONTEND_DIR),
-            'backend_path_exists': os.path.exists(BACKEND_DIR),
-            'upload_folder_exists': os.path.exists(UPLOAD_FOLDER),
-            'frontend_files': os.listdir(FRONTEND_DIR) if os.path.exists(FRONTEND_DIR) else [],
-            'backend_files': os.listdir(BACKEND_DIR) if os.path.exists(BACKEND_DIR) else []
-        }
+        words = word_tokenize(text.lower())
+        stop_words = set(stopwords.words('english'))
+        filtered_words = [word for word in words if word.isalnum() and word not in stop_words]
+        word_freq = Counter(filtered_words)
+        return [word for word, _ in word_freq.most_common(top_n)]
     except Exception as e:
-        return {"error": str(e)}
+        print(f"Error in extract_key_topics: {e}")
+        return []
 
-# Comprehensive path and file discovery function
-def find_index_html():
-    """
-    Systematically search for index.html across multiple potential locations.
-    
-    Returns:
-        str or None: Full path to index.html if found, None otherwise
-    """
-    search_paths = [
-        # Explicitly prioritize frontend directory
-        os.path.join(FRONTEND_DIR, 'index.html'),
-        
-        # Render.com specific paths
-        '/opt/render/project/frontend/index.html',
-        
-        # Relative paths
-        os.path.join(os.getcwd(), '..', 'frontend', 'index.html'),
-        os.path.join(os.getcwd(), 'frontend', 'index.html'),
-        
-        # Absolute paths from project root
-        os.path.join(PROJECT_ROOT, 'frontend', 'index.html')
-    ]
-    
-    # Log all search paths for diagnostics
-    logger.info("Searching for index.html in the following paths:")
-    for path in search_paths:
-        logger.info(f"Checking path: {path}")
-        if os.path.exists(path):
-            logger.info(f"Found index.html at: {path}")
-            return path
-    
-    logger.error("Could not find index.html in any of the search paths")
-    return None
+def fallback_summarize(text, num_lines=3):
+    """Simple extractive summarization if no ML model is available."""
+    sentences = sent_tokenize(text)
+    return '. '.join(sentences[:num_lines]) + '.'
 
-# Comprehensive filesystem diagnostics
-def diagnose_filesystem():
-    """
-    Perform an exhaustive diagnostic of the filesystem and project structure.
-    
-    Returns:
-        dict: Detailed filesystem and project structure information
-    """
-    try:
-        # Collect comprehensive filesystem information
-        filesystem_info = {
-            "project_root": {
-                "path": PROJECT_ROOT,
-                "exists": os.path.exists(PROJECT_ROOT),
-                "is_dir": os.path.isdir(PROJECT_ROOT),
-                "contents": safe_listdir(PROJECT_ROOT)
-            },
-            "frontend_path": {
-                "path": FRONTEND_DIR,
-                "exists": os.path.exists(FRONTEND_DIR),
-                "is_dir": os.path.isdir(FRONTEND_DIR),
-                "contents": safe_listdir(FRONTEND_DIR)
-            },
-            "backend_path": {
-                "path": BACKEND_DIR,
-                "exists": os.path.exists(BACKEND_DIR),
-                "is_dir": os.path.isdir(BACKEND_DIR),
-                "contents": safe_listdir(BACKEND_DIR)
-            },
-            "current_working_directory": {
-                "path": os.getcwd(),
-                "contents": safe_listdir(os.getcwd())
-            }
-        }
-        
-        return filesystem_info
-    except Exception as e:
-        logger.error(f"Error in filesystem diagnosis: {e}")
-        return {"error": str(e)}
-
-# Safe directory listing function
-def safe_listdir(path):
-    """
-    Safely list directory contents with error handling.
-    
-    Args:
-        path (str): Directory path to list
-    
-    Returns:
-        list: Directory contents or error information
-    """
-    try:
-        # Attempt to list directory contents
-        contents = os.listdir(path)
-        
-        # Detailed file information
-        detailed_contents = []
-        for item in contents:
-            full_path = os.path.join(path, item)
-            try:
-                is_dir = os.path.isdir(full_path)
-                size = os.path.getsize(full_path) if not is_dir else None
-                detailed_contents.append({
-                    "name": item,
-                    "is_directory": is_dir,
-                    "size": size
-                })
-            except Exception as item_error:
-                detailed_contents.append({
-                    "name": item,
-                    "error": str(item_error)
-                })
-        
-        return detailed_contents
-    except Exception as e:
-        return [{"error": str(e)}]
-
-# Comprehensive index.html rendering function
-def render_index_html():
-    """
-    Attempt to render index.html with comprehensive error handling and diagnostics.
-    
-    Returns:
-        Flask response or error JSON
-    """
-    try:
-        # Extensive filesystem diagnostics
-        filesystem_info = diagnose_filesystem()
-        logger.info(f"Filesystem Diagnostics: {json.dumps(filesystem_info, indent=2)}")
-        
-        # Explicitly check file contents and permissions
-        index_path = find_index_html()
-        
-        if not index_path:
-            logger.error("No index.html found in any search path")
-            return jsonify({
-                "status": "error",
-                "message": "index.html not found",
-                "filesystem_info": filesystem_info,
-                "search_paths": [
-                    '/opt/render/project/src/frontend/index.html',
-                    os.path.join(os.getcwd(), '..', 'frontend', 'index.html'),
-                    os.path.join(PROJECT_ROOT, 'frontend', 'index.html')
-                ]
-            }), 404
-        
-        # Detailed file diagnostics
-        try:
-            with open(index_path, 'r') as f:
-                file_contents = f.read()
-                logger.info(f"index.html file size: {len(file_contents)} bytes")
-                
-                # Comprehensive content validation
-                if len(file_contents.strip()) == 0:
-                    logger.error(f"index.html is empty: {index_path}")
-                    return jsonify({
-                        "status": "error",
-                        "message": "index.html is empty",
-                        "file_path": index_path,
-                        "filesystem_info": filesystem_info
-                    }), 500
-        except PermissionError:
-            logger.error(f"Permission denied reading {index_path}")
-            return jsonify({
-                "status": "error", 
-                "message": "Cannot read index.html",
-                "file_path": index_path,
-                "filesystem_info": filesystem_info
-            }), 403
-        except Exception as read_error:
-            logger.error(f"Error reading index.html: {read_error}")
-            return jsonify({
-                "status": "error",
-                "message": f"Error reading index.html: {str(read_error)}",
-                "file_path": index_path,
-                "filesystem_info": filesystem_info
-            }), 500
-        
-        # Attempt template rendering
-        try:
-            return render_template(index_path)
-        except Exception as render_error:
-            logger.error(f"Template rendering error for {index_path}: {render_error}")
-            logger.error(traceback.format_exc())
-            return jsonify({
-                "status": "error",
-                "message": "Failed to render index.html",
-                "error": str(render_error),
-                "file_path": index_path,
-                "file_contents": file_contents[:500],  # Partial contents for debugging
-                "filesystem_info": filesystem_info
-            }), 500
-    
-    except Exception as e:
-        logger.error(f"Unexpected error in index.html rendering: {e}")
-        logger.error(traceback.format_exc())
-        return jsonify({
-            "status": "error",
-            "message": "Catastrophic failure rendering index.html",
-            "error": str(e),
-            "filesystem_info": diagnose_filesystem()
-        }), 500
-
-# Initialize Flask with explicit frontend path
-app = Flask(__name__, 
-            static_folder=os.path.join(FRONTEND_DIR, 'static'),
-            static_url_path='/static')
+def fallback_generate_questions(text, num_questions=2):
+    """Generate basic questions if no ML model is available."""
+    sentences = sent_tokenize(text)
+    return [f"What is the main point of: {sent}?" for sent in sentences[:num_questions]]
 
 # Configuration
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['SECRET_KEY'] = os.urandom(24)
 
-# Simplified CORS configuration
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# Summarization pipeline using HuggingFace Transformers
+summarizer = pipeline("summarization", model="t5-small")
 
-# Optional CSRF protection
-try:
-    csrf = CSRFProtect(app)
-except Exception as e:
-    logger.warning(f"CSRF protection could not be initialized: {e}")
+# Function to check if the file is allowed
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Fallback function for missing dependencies
-def dependency_fallback(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except ImportError as e:
-            logger.error(f"Dependency missing for {func.__name__}: {e}")
-            return jsonify({
-                "status": "error",
-                "message": f"Dependency missing: {str(e)}"
-            }), 500
-    return wrapper
-
-logger.info(f"Current Working Directory: {os.getcwd()}")
-logger.info(f"Python Path: {sys.executable}")
-logger.info(f"Port: {os.environ.get('PORT', 10000)}")
-
-# Add these routes at the END of your existing routes
-@app.route('/')
-def serve_frontend():
-    index_path = os.path.join(FRONTEND_DIR, 'index.html')
-    logger.info(f"Attempting to serve index.html from: {index_path}")
-    if os.path.exists(index_path):
-        return send_file(index_path)
-    else:
-        logger.error(f"index.html not found at {index_path}")
-        return "Frontend not found", 404
-
-@app.route('/<path:path>')
-def serve_static_files(path):
+def extract_pdf_text(pdf_path):
+    """
+    Extract text from a PDF file using PyPDF2.
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+    
+    Returns:
+        str: Extracted text from the PDF
+    """
     try:
-        return send_from_directory(FRONTEND_DIR, path)
-    except FileNotFoundError:
-        logger.warning(f"File not found: {path}. Serving index.html")
-        return send_file(os.path.join(FRONTEND_DIR, 'index.html'))
-
-# Health check with comprehensive system information
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    try:
-        return jsonify({
-            "status": "healthy",
-            "message": "Backend is running",
-            "python_version": sys.version,
-            "dependencies": {
-                "PyPDF2": bool(PyPDF2),
-                "pdfminer": bool(extract_text),
-                "sumy": bool(Tokenizer)
-            },
-            "project_structure": diagnose_project_structure(),
-            "environment": os.environ.get('FLASK_ENV', 'Not Set')
-        }), 200
+        reader = PyPDF2.PdfReader(open(pdf_path, 'rb'))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+        return text.strip()
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        print(f"Error extracting PDF text: {e}")
+        return ""
+
+# Route to upload and process the PDF
+@app.route('/upload_pdf', methods=['GET', 'POST'])
+def upload_pdf():
+    if request.method == 'POST':
+        # Check if the post request has the file part
+        if 'file' not in request.files:
+            flash("No file part")
+            return redirect(request.url)
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash("No selected file")
+            return redirect(request.url)
+        
+        if file and allowed_file(file.filename):
+            # Save the uploaded PDF file
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            
+            # Extract text from PDF
+            text = extract_pdf_text(filepath)
+            
+            if text:
+                # Summarize the extracted text
+                summary = summarizer(text, max_length=150, min_length=50, do_sample=False)
+                summarized_text = summary[0]['summary_text']
+                
+                # Save the summarized text in the session for later use
+                session['summarized_text'] = summarized_text
+                flash("PDF processed and summarized successfully!")
+                
+                return render_template('summarized_text.html', summarized_text=summarized_text)
+            else:
+                flash("Failed to extract text from PDF")
+                return redirect(request.url)
+        
+        else:
+            flash("Invalid file type. Please upload a PDF file.")
+            return redirect(request.url)
+    
+    return render_template('upload_pdf.html')
+
+# Route to display the summarized text and generate flashcards
+@app.route('/generate_flashcards', methods=['GET'])
+def generate_flashcards():
+    summarized_text = session.get('summarized_text')
+    
+    if summarized_text:
+        # Here, you can implement flashcard generation logic from the summarized text
+        # For now, we're just displaying the summarized text
+        flashcards = [summarized_text]  # Replace with actual flashcard generation logic
+        
+        return render_template('flashcards.html', flashcards=flashcards)
+    
+    flash("No summarized text available. Please upload and process a PDF first.")
+    return redirect(url_for('upload_pdf'))
+
+# Route to display uploaded PDF and its summary (for testing)
+@app.route('/pdf_document_intelligence')
+def pdf_document_intelligence():
+    return render_template('pdf_document_intelligence.html')
+
+
+@app.route('/create_flashcard', methods=['POST'])
+def create_flashcard():
+    try:
+        data = request.get_json()
+        front = data.get('front')
+        back = data.get('back')
+
+        if not front or not back:
+            return jsonify({
+                'status': 'error', 
+                'error': 'Front and back are required'
+            }), 400
+
+        # Ensure session has flashcards list
+        if 'flashcards' not in session:
+            session['flashcards'] = []
+
+        # Create unique ID for the flashcard
+        new_flashcard = {
+            'id': len(session['flashcards']) + 1,
+            'front': front,
+            'back': back,
+            'created_at': datetime.now().isoformat()
+        }
+
+        session['flashcards'].append(new_flashcard)
+        session.modified = True
+
         return jsonify({
-            "status": "error",
-            "message": "Health check failed",
-            "error": str(e)
+            'status': 'success',
+            'flashcard': new_flashcard
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Flashcard creation error: {str(e)}")
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
         }), 500
 
-# Ensure debug mode is off in production
-app.debug = False
+@app.route('/get_flashcards')
+def get_flashcards():
+    flashcards = session.get('flashcards', [])
+    return jsonify({
+        'status': 'success',
+        'flashcards': flashcards
+    })
 
-# Use environment-specified port or default
-port = int(os.environ.get('PORT', 10000))
+@app.route('/delete_flashcard', methods=['POST'])
+def delete_flashcard():
+    try:
+        data = request.get_json()
+        card_id = data.get('id')
+
+        if not card_id:
+            return jsonify({
+                'status': 'error', 
+                'error': 'Card ID is required'
+            }), 400
+
+        # Find and remove the flashcard
+        session['flashcards'] = [
+            card for card in session.get('flashcards', []) 
+            if card['id'] != card_id
+        ]
+        session.modified = True
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Flashcard deleted successfully'
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Flashcard deletion error: {str(e)}")
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/save_whiteboard', methods=['POST'])
+def save_whiteboard():
+    try:
+        data = request.get_json()
+        if not data or 'imageData' not in data:
+            return jsonify({'error': 'No image data provided'}), 400
+            
+        whiteboard_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard')
+        os.makedirs(whiteboard_dir, exist_ok=True)
+        
+        image_data = data['imageData'].split(',')[1]
+        filename = f'whiteboard_{int(time.time())}.png'
+        filepath = os.path.join(whiteboard_dir, filename)
+        
+        with open(filepath, 'wb') as f:
+            f.write(base64.b64decode(image_data))
+            
+        return jsonify({
+            'success': True,
+            'filepath': filename
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_whiteboards')
+def get_whiteboards():
+    try:
+        whiteboard_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard')
+        files = []
+        if os.path.exists(whiteboard_dir):
+            files = [f for f in os.listdir(whiteboard_dir) if f.startswith('whiteboard_')]
+        return jsonify(files)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_current_theme')
+def get_current_theme():
+    theme_data = session.get('theme_data', get_default_theme())
+    return jsonify(theme_data)
+
+@app.route('/update_theme', methods=['POST'])
+def update_theme():
+    themes = {
+        'pastel_pink': {
+            'banner_color': '#FFB6C1',
+            'background_color': '#FFF5F5',
+            'button_color': '#FF69B4',
+            'text_color': '#333333'
+        },
+        'pastel_blue': {
+            'banner_color': '#B6D0E2',
+            'background_color': '#F0F8FF',
+            'button_color': '#89CFF0',
+            'text_color': '#333333'
+        },
+        'pastel_green': {
+            'banner_color': '#98FB98',
+            'background_color': '#F0FFF0',
+            'button_color': '#90EE90',
+            'text_color': '#333333'
+        },
+        'lavender': {
+            'banner_color': '#E6E6FA',
+            'background_color': '#F5EFFF',
+            'button_color': '#9B7EDE',
+            'text_color': '#333333'
+        }
+    }
+    
+    try:
+        data = request.get_json()
+        theme_name = data.get('theme')
+        
+        if theme_name in themes:
+            session['theme_data'] = themes[theme_name]
+            return jsonify({'status': 'success', 'theme': themes[theme_name]})
+        return jsonify({'error': 'Invalid theme'}), 400
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/progress_tracking', methods=['GET', 'POST'])
+def progress_tracking():
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            action = data.get('action')
+            
+            if action == 'add_goal':
+                goal = {
+                    'title': data.get('title'),
+                    'description': data.get('description'),
+                    'target_date': data.get('target_date'),
+                    'status': 'In Progress'
+                }
+                
+                if 'goals' not in session:
+                    session['goals'] = []
+                
+                session['goals'].append(goal)
+                session.modified = True
+                
+                return jsonify({
+                    'status': 'success',
+                    'goal': goal
+                })
+            
+            elif action == 'update_goal':
+                goals = session.get('goals', [])
+                goal_index = data.get('index')
+                
+                if goal_index is not None and 0 <= goal_index < len(goals):
+                    goals[goal_index]['status'] = data.get('status', goals[goal_index]['status'])
+                    session.modified = True
+                    
+                    return jsonify({
+                        'status': 'success',
+                        'goal': goals[goal_index]
+                    })
+                
+                return jsonify({'error': 'Invalid goal index'}), 400
+            
+            return jsonify({'error': 'Invalid action'}), 400
+        
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    # GET request renders the template with existing goals
+    return render_template('progress_tracking.html', 
+                           theme_data=session.get('theme_data', get_default_theme()),
+                           goals=session.get('goals', []))
+
+@app.route('/delete_pdf', methods=['POST'])
+def delete_pdf():
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({'status': 'error', 'error': 'No filename provided'}), 400
+        
+        # Ensure filename is secure and within the PDF upload directory
+        filename = secure_filename(filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'pdf', filename)
+        
+        # Check if file exists before attempting to delete
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        # Remove from session's uploaded PDFs
+        if 'uploaded_pdfs' in session:
+            session['uploaded_pdfs'] = [
+                pdf for pdf in session['uploaded_pdfs'] 
+                if pdf['filename'] != filename
+            ]
+            session.modified = True
+        
+        return jsonify({'status': 'success'}), 200
+    
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+@app.route('/save_goal', methods=['POST'])
+def save_goal():
+    try:
+        data = request.get_json()
+        
+        # Validate input
+        if not data:
+            return jsonify({'status': 'error', 'error': 'No data provided'}), 400
+        
+        title = data.get('title')
+        description = data.get('description')
+        goal_type = data.get('type')
+        deadline = data.get('deadline')
+        
+        if not title or not goal_type:
+            return jsonify({'status': 'error', 'error': 'Title and type are required'}), 400
+        
+        # Initialize goals in session if not exists
+        if 'goals' not in session:
+            session['goals'] = []
+        
+        # Create goal object
+        goal = {
+            'id': str(len(session['goals']) + 1),
+            'title': title,
+            'description': description or '',
+            'type': goal_type,
+            'deadline': deadline or ''
+        }
+        
+        # Add goal to session
+        session['goals'].append(goal)
+        session.modified = True
+        
+        return jsonify({
+            'status': 'success', 
+            'goal': goal
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/get_goals')
+def get_goals():
+    try:
+        goals = session.get('goals', [])
+        return jsonify({
+            'status': 'success',
+            'goals': goals
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/delete_goal', methods=['POST'])
+def delete_goal():
+    try:
+        data = request.get_json()
+        goal_id = data.get('goal_id')
+        
+        if not goal_id:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No goal ID provided'
+            }), 400
+        
+        if 'goals' not in session:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No goals found'
+            }), 400
+        
+        session['goals'] = [goal for goal in session['goals'] if goal['id'] != goal_id]
+        session.modified = True
+        
+        return jsonify({
+            'status': 'success'
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/save_schedule', methods=['POST'])
+def save_schedule():
+    try:
+        data = request.get_json()
+        
+        # Validate input
+        if not data:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No data provided'
+            }), 400
+        
+        title = data.get('title')
+        day = data.get('day')
+        time = data.get('time')
+        
+        if not title or not day or not time:
+            return jsonify({
+                'status': 'error', 
+                'error': 'Title, day, and time are required'
+            }), 400
+        
+        # Initialize schedule in session if not exists
+        if 'schedule' not in session:
+            session['schedule'] = []
+        
+        # Create schedule item
+        schedule_item = {
+            'id': str(len(session['schedule']) + 1),
+            'title': title,
+            'day': day,
+            'time': time
+        }
+        
+        # Add schedule item to session
+        session['schedule'].append(schedule_item)
+        session.modified = True
+        
+        return jsonify({
+            'status': 'success', 
+            'schedule_item': schedule_item
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/get_schedule')
+def get_schedule():
+    try:
+        schedule = session.get('schedule', [])
+        return jsonify({
+            'status': 'success',
+            'schedule': schedule
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/delete_schedule', methods=['POST'])
+def delete_schedule():
+    try:
+        data = request.get_json()
+        schedule_id = data.get('schedule_id')
+        
+        if not schedule_id:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No schedule ID provided'
+            }), 400
+        
+        if 'schedule' not in session:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No schedule found'
+            }), 400
+        
+        session['schedule'] = [
+            item for item in session['schedule'] 
+            if item['id'] != schedule_id
+        ]
+        session.modified = True
+        
+        return jsonify({
+            'status': 'success'
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/update_goal', methods=['POST'])
+def update_goal():
+    try:
+        data = request.get_json()
+        goal_id = data.get('goal_id')
+        status = data.get('status')
+
+        if not goal_id or not status:
+            return jsonify({
+                'status': 'error', 
+                'error': 'Goal ID and status are required'
+            }), 400
+
+        if 'goals' not in session:
+            return jsonify({
+                'status': 'error', 
+                'error': 'No goals found'
+            }), 400
+
+        for goal in session['goals']:
+            if goal['id'] == goal_id:
+                goal['status'] = status
+                session.modified = True
+                return jsonify({
+                    'status': 'success', 
+                    'goal': goal
+                }), 200
+
+        return jsonify({
+            'status': 'error', 
+            'error': 'Goal not found'
+        }), 404
+
+    except Exception as e:
+        app.logger.error(f"Goal update error: {str(e)}")
+        return jsonify({
+            'status': 'error', 
+            'error': str(e)
+        }), 500
+
+@app.route('/dashboard')
+def dashboard():
+    theme_data = session.get('theme_data', get_default_theme())
+    
+    # Aggregate data from different sections
+    dashboard_data = {
+        'flashcards_count': len(session.get('flashcards', [])),
+        'uploaded_pdfs_count': len(session.get('uploaded_pdfs', [])),
+        'goals_count': len(session.get('goals', [])),
+        'active_challenges': session.get('active_challenges', [])
+    }
+    
+    return render_template('dashboard.html', 
+                           theme_data=theme_data, 
+                           dashboard_data=dashboard_data)
+
+def get_default_theme():
+    """
+    Returns a default theme configuration for the application.
+    
+    Returns:
+        dict: A dictionary containing default theme settings.
+    """
+    return {
+        "primary_color": "#3498db",  # Blue
+        "secondary_color": "#2ecc71",  # Green
+        "text_color": "#333333",  # Dark gray
+        "background_color": "#ffffff",  # White
+        "font_family": "Arial, sans-serif"
+    }
+
+@app.route('/')
+def index():
+    theme_data = get_default_theme()
+    return render_template('index.html', theme_data=theme_data)
+
+# Routes for main features
+@app.route('/flashcards')
+def flashcards():
+    theme_data = get_default_theme()
+    return render_template('flashcards.html', theme_data=theme_data)
+
+@app.route('/whiteboard_view')
+def whiteboard():
+    theme_data = get_default_theme()
+    return render_template('whiteboard.html', theme_data=theme_data)
+
+@app.route('/digital_planner')
+def digital_planner():
+    theme_data = get_default_theme()
+    return render_template('digital_planner.html', theme_data=theme_data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000, debug=True)  # Run the Flask app on port 5000
