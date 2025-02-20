@@ -19,7 +19,7 @@ from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
 
 # Initialize Flask app
-app = Flask(_name_, static_folder='static')
+app = Flask(__name__, static_folder='static')
 
 # Add CSRF protection
 csrf = CSRFProtect(app)
