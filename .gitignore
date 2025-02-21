@@ -1,24 +1,7 @@
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
 venv/
-*.log
-
-# Environment
-.env
-*.env
-
-# Frontend - No dist or build (as per your setup)
-frontend/node_modules/
-
-# IDE
+node_modules/
+__pycache__/
+.pytest_cache/
 .vscode/
 .vs/
-
-# Miscellaneous
-uploads/
-*.sqlite3
-.DS_Store
-
-firebase.json

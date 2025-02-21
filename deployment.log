@@ -1,0 +1,87 @@
+2025-02-17 21:12:09,716 - INFO - Project Root: /opt/render/project/src
+2025-02-17 21:12:09,717 - INFO - Frontend Path: /opt/render/project/src\frontend
+2025-02-17 21:12:09,718 - INFO - Backend Path: /opt/render/project/src\backend
+2025-02-17 21:12:09,718 - INFO - Upload Folder: /opt/render/project/src\backend\uploads
+2025-02-17 21:12:09,719 - INFO - Current Working Directory: C:\Users\Aliya\OneDrive\Desktop\Web App\backend
+2025-02-17 21:12:09,726 - INFO - Current Working Directory: C:\Users\Aliya\OneDrive\Desktop\Web App\backend
+2025-02-17 21:12:09,726 - INFO - Python Path: C:\Users\Aliya\AppData\Local\Programs\Python\Python311\python.exe
+2025-02-17 21:12:09,728 - INFO - Port: 10000
+2025-02-17 21:12:09,803 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:10000
+ * Running on http://192.168.2.182:10000
+2025-02-17 21:12:09,804 - INFO - [33mPress CTRL+C to quit[0m
+2025-02-17 21:12:13,750 - INFO - ENVIRONMENT VARIABLES:
+2025-02-17 21:12:13,754 - INFO - ALLUSERSPROFILE: C:\ProgramData
+2025-02-17 21:12:13,754 - INFO - APPDATA: C:\Users\Aliya\AppData\Roaming
+2025-02-17 21:12:13,757 - INFO - COMMONPROGRAMFILES: C:\Program Files\Common Files
+2025-02-17 21:12:13,757 - INFO - COMMONPROGRAMFILES(X86): C:\Program Files (x86)\Common Files
+2025-02-17 21:12:13,760 - INFO - COMMONPROGRAMW6432: C:\Program Files\Common Files
+2025-02-17 21:12:13,760 - INFO - COMPUTERNAME: AALIYA
+2025-02-17 21:12:13,761 - INFO - COMSPEC: C:\WINDOWS\system32\cmd.exe
+2025-02-17 21:12:13,761 - INFO - DRIVERDATA: C:\Windows\System32\Drivers\DriverData
+2025-02-17 21:12:13,761 - INFO - EFC_18740: 1
+2025-02-17 21:12:13,769 - INFO - FPS_BROWSER_APP_PROFILE_STRING: Internet Explorer
+2025-02-17 21:12:13,769 - INFO - FPS_BROWSER_USER_PROFILE_STRING: Default
+2025-02-17 21:12:13,770 - INFO - HOMEDRIVE: C:
+2025-02-17 21:12:13,770 - INFO - HOMEPATH: \Users\Aliya
+2025-02-17 21:12:13,771 - INFO - IGCCSVC_DB: AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAAX2lBZ1AMuUK9oaC/FAL6zAQAAAACAAAAAAAQZgAAAAEAACAAAAA8IMiXNaeDvdwD0ACIsL68u8HAb0EAe2n60xmRyXhkxgAAAAAOgAAAAAIAACAAAAA0Ze+t0S7vrqHl3u2UUoR4kEjNdNv/pXktV9nko1b6TmAAAABKThTlYEBSoK26pqoV4bNsVpIceULpjVsvFfEue9avsrFGnW9LIVanGinwmrKAjmlgs4I/Tj2D9FkyVZa8YPme2IpwHPvauJLZnDO7PL0z5EBXPG7bd5fZfq8ZRThIEfdAAAAAJgOsI9/Z1shbWWHirLLkbUFoGIiuqghXWIFFq5bocErUWJvS5VntghcoL+RpYFDIaiRGpqPgfEGUExO2DFmGNg==
+2025-02-17 21:12:13,771 - INFO - LOCALAPPDATA: C:\Users\Aliya\AppData\Local
+2025-02-17 21:12:13,771 - INFO - LOGONSERVER: \\AALIYA
+2025-02-17 21:12:13,771 - INFO - NUMBER_OF_PROCESSORS: 8
+2025-02-17 21:12:13,772 - INFO - ONEDRIVE: C:\Users\Aliya\OneDrive
+2025-02-17 21:12:13,773 - INFO - ONEDRIVECONSUMER: C:\Users\Aliya\OneDrive
+2025-02-17 21:12:13,779 - INFO - OS: Windows_NT
+2025-02-17 21:12:13,791 - INFO - PATH: C:\Users\Aliya\AppData\Local\Programs\Python\Python311;C:\Program Files\nodejs\;C:\Program Files\Git\cmd;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\Aliya\AppData\Local\Programs\Python\Python311\Scripts\;C:\Users\Aliya\AppData\Local\Programs\Python\Python311\;C:\Users\Aliya\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\Aliya\AppData\Local\Programs\Python\Python312\;C:\Users\Aliya\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\Aliya\AppData\Local\Programs\Python\Python313\;C:\Users\Aliya\google-cloud-sdk\bin;C:\Users\Aliya\AppData\Local\Programs\Ollama;C:\Users\Aliya\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Aliya\AppData\Local\Programs\Windsurf\bin;C:\Users\Aliya\.dotnet\tools;C:\Users\Aliya\AppData\Roaming\npm
+2025-02-17 21:12:13,793 - INFO - PATHEXT: .COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC
+2025-02-17 21:12:13,793 - INFO - PROCESSOR_ARCHITECTURE: AMD64
+2025-02-17 21:12:13,794 - INFO - PROCESSOR_IDENTIFIER: Intel64 Family 6 Model 140 Stepping 1, GenuineIntel
+2025-02-17 21:12:13,806 - INFO - PROCESSOR_LEVEL: 6
+2025-02-17 21:12:13,813 - INFO - PROCESSOR_REVISION: 8c01
+2025-02-17 21:12:13,821 - INFO - PROGRAMDATA: C:\ProgramData
+2025-02-17 21:12:13,824 - INFO - PROGRAMFILES: C:\Program Files
+2025-02-17 21:12:13,828 - INFO - PROGRAMFILES(X86): C:\Program Files (x86)
+2025-02-17 21:12:13,841 - INFO - PROGRAMW6432: C:\Program Files
+2025-02-17 21:12:13,841 - INFO - PROMPT: $P$G
+2025-02-17 21:12:13,844 - INFO - PSMODULEPATH: C:\Program Files\WindowsPowerShell\Modules;C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules
+2025-02-17 21:12:13,847 - INFO - PUBLIC: C:\Users\Public
+2025-02-17 21:12:13,853 - INFO - SESSIONNAME: Console
+2025-02-17 21:12:13,856 - INFO - SYSTEMDRIVE: C:
+2025-02-17 21:12:13,858 - INFO - SYSTEMROOT: C:\WINDOWS
+2025-02-17 21:12:13,859 - INFO - TEMP: C:\Users\Aliya\AppData\Local\Temp
+2025-02-17 21:12:13,861 - INFO - TMP: C:\Users\Aliya\AppData\Local\Temp
+2025-02-17 21:12:13,872 - INFO - USERDOMAIN: Aaliya
+2025-02-17 21:12:13,874 - INFO - USERDOMAIN_ROAMINGPROFILE: Aaliya
+2025-02-17 21:12:13,876 - INFO - USERNAME: Aliya
+2025-02-17 21:12:13,878 - INFO - USERPROFILE: C:\Users\Aliya
+2025-02-17 21:12:13,879 - INFO - WINDIR: C:\WINDOWS
+2025-02-17 21:12:13,884 - INFO - ZES_ENABLE_SYSMAN: 1
+2025-02-17 21:12:13,893 - INFO - __PSLOCKDOWNPOLICY: 0
+2025-02-17 21:12:13,911 - INFO - KMP_DUPLICATE_LIB_OK: True
+2025-02-17 21:12:13,915 - INFO - KMP_INIT_AT_FORK: FALSE
+2025-02-17 21:12:13,919 - INFO - WERKZEUG_SERVER_FD: 4124
+2025-02-17 21:12:13,921 - INFO - CHECKING PATH: /opt/render/project/src/frontend/index.html
+2025-02-17 21:12:13,921 - INFO - CHECKING PATH: /opt/render/project/frontend/index.html
+2025-02-17 21:12:13,929 - INFO - CHECKING PATH: C:\Users\Aliya\OneDrive\Desktop\Web App\backend\..\frontend\index.html
+2025-02-17 21:12:13,941 - INFO - PATH EXISTS: C:\Users\Aliya\OneDrive\Desktop\Web App\backend\..\frontend\index.html
+2025-02-17 21:12:14,030 - INFO - FILE READ SUCCESSFULLY: C:\Users\Aliya\OneDrive\Desktop\Web App\backend\..\frontend\index.html
+2025-02-17 21:12:14,030 - INFO - FILE SIZE: 1950 bytes
+2025-02-17 21:12:14,030 - INFO - FILE PREVIEW: {% extends "base.html" %}
+
+{% block title %}AalifyX: Productivity Companion{% endblock %}
+
+{% block additional_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero">
+        <h1>Productivity Reimagined</h1>
+        <p>Elevate your learning and productivity with intelligent tools designed for modern scholars.</p>
+        <div class="powered-by">Powered by AalifyX</div>
+    </div>
+2025-02-17 21:12:14,034 - INFO - 127.0.0.1 - - [17/Feb/2025 21:12:14] "GET / HTTP/1.1" 200 -
+2025-02-17 21:12:14,078 - INFO - 127.0.0.1 - - [17/Feb/2025 21:12:14] "[33mGET /{{%20url_for('static',%20filename='css/index.css')%20}} HTTP/1.1[0m" 404 -
+2025-02-17 21:12:15,758 - INFO - 127.0.0.1 - - [17/Feb/2025 21:12:15] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-02-17 21:12:25,033 - INFO - 127.0.0.1 - - [17/Feb/2025 21:12:25] "[33mGET /pdf_document_intelligence HTTP/1.1[0m" 404 -
