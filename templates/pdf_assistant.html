@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}PDF Assistant{% endblock %}
+
+{% block additional_styles %}
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f4f6f9;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+    }
+
+    .pdf-container {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .file-upload {
+        border: 2px dashed #3498db;
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center;
+        transition: background-color 0.3s;
+    }
+
+    .file-upload:hover {
+        background-color: #f1f8ff;
+    }
+
+    #file-input {
+        display: none;
+    }
+
+    .upload-label {
+        cursor: pointer;
+        color: #3498db;
+        font-weight: bold;
+    }
+
+    #summary-result {
+        margin-top: 20px;
+        background-color: #f4f6f9;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .btn-primary:hover {
+        background-color: #2980b9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="pdf-container">
+        <h2>PDF Assistant</h2>
+        <div class="file-upload">
+            <input type="file" id="file-input" accept=".pdf">
+            <label for="file-input" class="upload-label">
+                Click to upload PDF or drag and drop here
+            </label>
+        </div>
+        <div id="summary-result" style="display: none;">
+            <h3>PDF Summary</h3>
+            <p id="summary-text"></p>
+            <p id="page-count"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('file-input').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            uploadPDF(file);
+        }
+    });
+
+    // Drag and drop functionality
+    const dropArea = document.querySelector('.file-upload');
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    dropArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const file = dt.files[0];
+        if (file) {
+            uploadPDF(file);
+        }
+    }
+
+    function uploadPDF(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/pdf_assistant', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            // Display summary
+            const summaryResult = document.getElementById('summary-result');
+            const summaryText = document.getElementById('summary-text');
+            const pageCount = document.getElementById('page-count');
+
+            summaryText.textContent = data.summary;
+            pageCount.textContent = `Total Pages: ${data.total_pages}`;
+            summaryResult.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing the PDF');
+        });
+    }
+</script>
+{% endblock %}

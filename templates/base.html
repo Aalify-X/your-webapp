@@ -1,23 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A comprehensive study assistant web app featuring flashcards, whiteboard, PDF assistant, and study planner.">
-    <meta name="keywords" content="study assistant, flashcards, whiteboard, PDF assistant, study planner, education">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://your-vercel-url.vercel.app" />
     
     {% block head %}
     <title>Progrify: Empower Your Progress</title>
     {% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <style>
         :root {
-            --theme-color-light: #FF847C;
-            --theme-color-dark: #FF6B6B;
-            --background-color: #FFF5F5;
-            --text-color: #333333;
+        --theme-color-light: rgba(255, 107, 107, 0.8); /* Corrected */
+        --theme-color-dark: #FF6B6B;
+        --text-color: #333333;
         }
+
 
         body {
             margin: 0;
@@ -34,13 +30,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px #0000001a;
             position: sticky;
             top: 0;
             z-index: 1000;
             width: 100%;
+            height: 160px;
             box-sizing: border-box;
-            animation: GradientAnimation 10s ease infinite;
+            animation: GradientAnimation 2s ease infinite;
             overflow: hidden;
             perspective: 1000px;
         }
@@ -129,6 +126,7 @@
         }
     </style>
     {% block additional_styles %}{% endblock %}
+
 </head>
 <body>
     <div class="banner">

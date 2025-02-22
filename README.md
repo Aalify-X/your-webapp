@@ -1,22 +1,40 @@
-# Progrify Web Application
+# My Web App
 
-## Deployment Configuration
-- Python Version: 3.11.9
-- Backend Framework: Flask
-- Deployment Platform: Render
+## Overview
+A productivity-focused web application designed to enhance study and note-taking experience.
 
-## Local Setup
+## Features
+- Interactive whiteboard
+- Sticky notes
+- Study assistant functionality
+
+## Technologies
+- Flask
+- Python
+- HTML/CSS
+- Deployed on Vercel
+
+## Local Development
 1. Clone the repository
-2. Create virtual environment: `python -m venv venv`
-3. Activate venv: `source venv/bin/activate` (Unix) or `venv\Scripts\activate` (Windows)
-4. Install dependencies: `pip install -r requirements.txt`
-5. Run application: `gunicorn backend.app:app`
+2. Create a virtual environment
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+3. Install dependencies
+   ```
+   pip install -r requirements.txt
+   ```
+4. Run the application
+   ```
+   flask run
+   ```
 
-## Environment Variables
-- `FLASK_ENV`: Set to `production` for deployment
-- `SECRET_KEY`: Generated during deployment
-- `PORT`: Default 10000
+## Deployment
+Deployed automatically via Vercel integration with GitHub.
 
-## Deployment Notes
-- Uses gunicorn as WSGI server
-- Serves backend and frontend from same application
+## Contributing
+Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
+
+## License
+This project is licensed under the MIT License - see the LICENSE.md file for details.

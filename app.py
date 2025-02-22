@@ -296,7 +296,7 @@ def update_theme():
     themes = {
         'pastel_pink': {
             'banner_color': '#FFB6C1',
-            'background_color': '#FFF5F5',
+            'background_color': '#FFCFB35F5',
             'button_color': '#FF69B4',
             'text_color': '#333333'
         },
@@ -308,13 +308,13 @@ def update_theme():
         },
         'pastel_green': {
             'banner_color': '#98FB98',
-            'background_color': '#F0FFF0',
+            'background_color': '#F0FFCFB30',
             'button_color': '#90EE90',
             'text_color': '#333333'
         },
         'lavender': {
             'banner_color': '#E6E6FA',
-            'background_color': '#F5EFFF',
+            'background_color': '#F5EFFCFB3',
             'button_color': '#9B7EDE',
             'text_color': '#333333'
         }
@@ -667,7 +667,7 @@ def get_default_theme():
         "primary_color": "#3498db",  # Blue
         "secondary_color": "#2ecc71",  # Green
         "text_color": "#333333",  # Dark gray
-        "background_color": "#ffffff",  # White
+        "background_color": "#FFCFB3FFCFB3",  # White
         "font_family": "Arial, sans-serif"
     }
 
@@ -693,4 +693,4 @@ def digital_planner():
     return render_template('digital_planner.html', theme_data=theme_data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)  # Run the Flask app on port 5000
+    app.run(host='0.0.0.0', port=8000, debug=True)  # Run the Flask app on port 8000
