@@ -18,6 +18,8 @@ from sumy.utils import get_stop_words
 from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
 
+
+
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
 
@@ -692,5 +694,11 @@ def digital_planner():
     theme_data = get_default_theme()
     return render_template('digital_planner.html', theme_data=theme_data)
 
+port = int(os.environ.get("PORT", 8000))  # Default to 8000 if PORT is not set
+
+@app.route('/hello')
+def hello():
+    return "Hello, Render!"
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)  # Run the Flask app on port 8000
+    app.run(host='0.0.0.0', port=port, debug=True)  # Run the Flask app on port 8000

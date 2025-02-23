@@ -1,9 +1,18 @@
 services:
   - type: web
-    name: my-app
+    name: progrify-backend
     env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "waitress-serve --port=8000 app:app"
+    buildCommand: |
+      cd backend
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: "gunicorn --workers=1 --threads=1 --worker-tmp-dir /dev/shm --bind 0.0.0.0:8000 app:app"
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONPATH
+        value: .
       - key: PORT
-        value: 8000
+        value: $PORT
