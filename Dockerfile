@@ -1,19 +1,18 @@
-FROM python:3.11-slim
+# Use an official Python runtime as a parent image
+FROM python:3.11
 
-# Set working directory
+# Set the working directory
 WORKDIR /app
 
-# Copy only the requirements first
-COPY requirements.txt .
+# Copy the project files into the container
+COPY . /app
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application files
-COPY . .
+# Expose the required port (Render uses PORT environment variable)
+ENV PORT=8080
+EXPOSE 8080
 
-# Expose port for Flask
-EXPOSE 5000
-
-# Use waitress to run app on Render
-CMD ["python", "app.py"]
+# Run the application
+CMD ["python", "app.py"]  # Change this if your main file is different
