@@ -694,11 +694,6 @@ def digital_planner():
     theme_data = get_default_theme()
     return render_template('digital_planner.html', theme_data=theme_data)
 
-port = int(os.environ.get("PORT", 5000))  # Default to 5000 if PORT is not set
-
-@app.route('/hello')
-def hello():
-    return "Hello, Render!"
-
-if __name__ == "__main__":
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))  # Default to 8080 if PORT not set
     app.run(host="0.0.0.0", port=port)
