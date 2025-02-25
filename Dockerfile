@@ -1,9 +1,19 @@
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-COPY . .
+# Copy only the requirements first
+COPY requirements.txt .
 
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["gunicorn", "--workers=1", "--threads=1", "--worker-tmp-dir", "/dev/shm", "--bind", "0.0.0.0:$PORT", "app:app"]
+# Copy the rest of the application files
+COPY . .
+
+# Expose port for Flask
+EXPOSE 5000
+
+# Use waitress to run app on Render
+CMD ["python", "app.py"]
