@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> da8aa207397c116d6167513711326ee97529b98a
 # Use a smaller base image
 FROM python:3.9-slim-buster
 
@@ -11,7 +14,10 @@ ENV NAME Progrify
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
+<<<<<<< HEAD
  8a9d2ddd898b965fd74f41343ab452c2e2ff5db2
+=======
+>>>>>>> da8aa207397c116d6167513711326ee97529b98a
 # Set the working directory in the container
 WORKDIR /app
 
@@ -55,6 +61,9 @@ EXPOSE 5000
 # Define environment variable
 ENV NAME Progrify
 
+<<<<<<< HEAD
  8a9d2ddd898b965fd74f41343ab452c2e2ff5db2
+=======
+>>>>>>> da8aa207397c116d6167513711326ee97529b98a
 # Run app.py when the container launches
 CMD ["python", "app.py"]
