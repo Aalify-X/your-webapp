@@ -46,22 +46,27 @@ question_generator = None
 # Try to import transformers if available
 try:
     from transformers import pipeline
-    try:
-        summarizer = pipeline("summarization", model="t5-small")
-        question_generator = pipeline("text2text-generation", model="t5-small")
-    except Exception as e:
-        print(f"Transformers pipeline loading failed: {e}")
-except ImportError:
-    print("Transformers not available. Using fallback text processing methods.")
+    
+    # Use smaller, more memory-efficient models
+    summarizer = pipeline("summarization", model="facebook/bart-small-cnn", max_length=130, min_length=30)
+    question_generator = pipeline("text2text-generation", model="google/flan-t5-small")
+except Exception as e:
+    print(f"Transformers pipeline loading failed: {e}")
+    summarizer = None
+    question_generator = None
 
 # Fallback functions for text processing
-def extract_key_topics_fallback(text, top_n=5):
-    """Extract key topics using basic NLTK processing."""
+def extract_key_topics_fallback(text, top_n=3):
+    """Extract key topics using basic NLTK processing with reduced complexity."""
     try:
-        words = word_tokenize(text.lower())
-        stop_words = set(stopwords.words('english'))
-        filtered_words = [word for word in words if word.isalnum() and word not in stop_words]
-        word_freq = Counter(filtered_words)
+        import nltk
+        from collections import Counter
+        
+        # Tokenize with minimal processing
+        words = nltk.word_tokenize(text.lower())
+        words = [word for word in words if word.isalnum()]
+        
+        word_freq = Counter(words)
         return [word for word, _ in word_freq.most_common(top_n)]
     except Exception as e:
         print(f"Error in extract_key_topics: {e}")
@@ -83,7 +88,7 @@ ALLOWED_EXTENSIONS = {'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Summarization pipeline using HuggingFace Transformers
-summarizer = pipeline("summarization", model="t5-small")
+# summarizer = pipeline("summarization", model="t5-small")
 
 # Function to check if the file is allowed
 def allowed_file(filename):
@@ -112,46 +117,26 @@ def extract_pdf_text(pdf_path):
 # Route to upload and process the PDF
 @app.route('/upload_pdf', methods=['GET', 'POST'])
 def upload_pdf():
-    if request.method == 'POST':
-        # Check if the post request has the file part
-        if 'file' not in request.files:
-            flash("No file part")
-            return redirect(request.url)
+    # Implement more memory-efficient file handling
+    try:
+        file = request.files.get('file')
+        if not file or not allowed_file(file.filename):
+            return jsonify({"error": "Invalid file"}), 400
         
-        file = request.files['file']
+        # Save file temporarily and process in chunks
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
         
-        if file.filename == '':
-            flash("No selected file")
-            return redirect(request.url)
+        # Process file with memory-efficient method
+        text = extract_pdf_text(filepath)
         
-        if file and allowed_file(file.filename):
-            # Save the uploaded PDF file
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            # Extract text from PDF
-            text = extract_pdf_text(filepath)
-            
-            if text:
-                # Summarize the extracted text
-                summary = summarizer(text, max_length=150, min_length=50, do_sample=False)
-                summarized_text = summary[0]['summary_text']
-                
-                # Save the summarized text in the session for later use
-                session['summarized_text'] = summarized_text
-                flash("PDF processed and summarized successfully!")
-                
-                return render_template('summarized_text.html', summarized_text=summarized_text)
-            else:
-                flash("Failed to extract text from PDF")
-                return redirect(request.url)
+        # Clean up temporary file
+        os.remove(filepath)
         
-        else:
-            flash("Invalid file type. Please upload a PDF file.")
-            return redirect(request.url)
-    
-    return render_template('upload_pdf.html')
+        return jsonify({"text": text[:2000]})  # Limit text size
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Route to display the summarized text and generate flashcards
 @app.route('/generate_flashcards', methods=['GET'])
@@ -694,6 +679,7 @@ def digital_planner():
     theme_data = get_default_theme()
     return render_template('digital_planner.html', theme_data=theme_data)
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))  # Default to 8080 if PORT not set
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if PORT isn't set
     app.run(host="0.0.0.0", port=port)

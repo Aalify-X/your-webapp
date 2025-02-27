@@ -1,16 +1,18 @@
-type: web
-name: progrify
-runtime: docker
-region: oregon  # Change as needed
-plan: free  
-healthCheckPath: /
-envVars:
-  - key: PORT
-    value: 5000
-  - key: FLASK_ENV
-    value: production
-  - key: WEB_CONCURRENCY
-    value: "2"  # Adjust based on memory constraints
-
-buildCommand: pip install -r requirements.txt
-startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+services:
+  - type: web
+    name: progrify
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 1 --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.16
+      - key: PORT
+        value: 5000
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 1
