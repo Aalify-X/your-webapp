@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    {% block head %}
+    <title>Progrify: Empower Your Progress</title>
+    {% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <style>
+        :root {
+        --theme-color-light: rgba(255, 107, 107, 0.8); /* Corrected */
+        --theme-color-dark: #FF6B6B;
+        --text-color: #333333;
+        }
+
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .banner {
+            background: linear-gradient(135deg, var(--theme-color-light), var(--theme-color-dark));
+            background-size: 400% 400%;
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px #0000001a;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            width: 100%;
+            height: 160px;
+            box-sizing: border-box;
+            animation: GradientAnimation 2s ease infinite;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        @keyframes GradientAnimation {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+
+        .banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(
+                circle at center, 
+                rgba(255,255,255,0.15) 0%, 
+                transparent 70%
+            );
+            transform: rotate(-45deg);
+            z-index: 1;
+            opacity: 0.5;
+        }
+
+        .banner-branding {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            position: relative;
+            z-index: 2;
+        }
+
+        .banner-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 0;
+            letter-spacing: -0.5px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .banner-subtitle {
+            font-size: 10px;
+            color: rgba(255,255,255,0.8);
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+
+        .banner-actions {
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .back-home-btn {
+            padding: 10px 20px;
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .back-home-btn:hover {
+            background-color: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+    </style>
+    {% block additional_styles %}{% endblock %}
+
+</head>
+<body>
+    <div class="banner">
+        <div class="banner-branding">
+            <div class="banner-title">Progrify: Empower Your Progress</div>
+            <div class="banner-subtitle">Powered by TIRON</div>
+        </div>
+        <div class="banner-actions">
+            {% if request.endpoint != 'index' %}
+            <a href="{{ url_for('index') }}" class="back-home-btn">🏠 Home</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

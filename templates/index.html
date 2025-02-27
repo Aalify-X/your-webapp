@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Progrify: Productivity Companion{% endblock %}
+
+{% block additional_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero">
+        <h1>Productivity Reimagined</h1>
+        <p>Elevate your learning and productivity with intelligent tools designed for modern scholars.</p>
+        <div class="powered-by">Powered by TIRON</div>
+    </div>
+
+    <div id="features" class="features">
+        <div class="feature">
+            <div class="level-indicator">Feature 1</div>
+            <div class="feature-icon">📄</div>
+            <h3>Document Intelligence</h3>
+            <p>Transform PDFs into actionable insights with advanced text analysis.</p>
+            <a href="/pdf_document_intelligence" class="btn">Analyze PDFs</a>
+        </div>
+
+        <div class="feature">
+            <div class="level-indicator">Feature 2</div>
+            <div class="feature-icon">🃏</div>
+            <h3>Smart Flash Card</h3>
+            <p>Create, organize, and connect your learning with intelligent flashcards.</p>
+            <a href="/flashcards" class="btn">Build Knowledge</a>
+        </div>
+
+        <div class="feature">
+            <div class="level-indicator">Feature 3</div>
+            <div class="feature-icon">📝</div>
+            <h3>Digital Canvas</h3>
+            <p>Unleash your creativity with an intuitive digital whiteboard.</p>
+            <a href="/whiteboard_view" class="btn">Start Creating</a>
+        </div>
+
+        <div class="feature">
+            <div class="level-indicator">Feature 4</div>
+            <div class="feature-icon">📅</div>
+            <h3>Digital Planner</h3>
+            <p>Organize tasks, track habits, and manage your daily schedule.</p>
+            <a href="/digital_planner" class="btn">Plan Your Day</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

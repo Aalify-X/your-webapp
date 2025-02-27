@@ -1,0 +1,6 @@
+type: web
+name: Progrify
+runtime: docker
+region: oregon  # Change as needed
+plan: free  
+healthCheckPath: /

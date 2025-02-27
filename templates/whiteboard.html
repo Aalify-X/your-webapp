@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Digital Canvas{% endblock %}
+
+{% block additional_styles %}
+<style>
+    body {
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+    }
+
+    .whiteboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .controls {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .tool-btn {
+        background-color: #FF847C;
+        color: white;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .tool-btn.active {
+        background-color: #FF6B6B;
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+    }
+    
+    .tool-btn:hover {
+        background-color: #FF6B6B;
+    }
+    
+    #canvas {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        cursor: crosshair;
+        width: 100%;
+        max-height: 600px;
+    }
+
+    .canvas-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .canvas-controls input[type="color"] {
+        width: 50px;
+        height: 50px;
+        padding: 0;
+        border: none;
+        background: none;
+    }
+
+    .canvas-controls input[type="range"] {
+        flex-grow: 1;
+    }
+
+    .image-upload {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="whiteboard-container">
+    <div class="controls">
+        <div class="canvas-controls">
+            <button onclick="setTool('pencil')" class="tool-btn" id="pencil-btn">✏️ Pencil</button>
+            <button onclick="setTool('eraser')" class="tool-btn" id="eraser-btn">🧹 Eraser</button>
+            <button onclick="setTool('line')" class="tool-btn" id="line-btn">📏 Line</button>
+            <button onclick="setTool('circle')" class="tool-btn" id="circle-btn">⭕ Circle</button>
+            <button onclick="setTool('rectangle')" class="tool-btn" id="rectangle-btn">⬜ Rectangle</button>
+            
+            <input type="color" id="color-picker" value="#000000">
+            <input type="range" id="line-width" min="1" max="50" value="5">
+            
+            <button onclick="clearCanvas()" class="tool-btn">🗑️ Clear</button>
+            <button onclick="saveDrawing()" class="tool-btn">💾 Save</button>
+            
+            <label for="image-upload" class="tool-btn">📤 Import Image
+                <input type="file" id="image-upload" class="image-upload" accept="image/*">
+            </label>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('color-picker');
+    const lineWidthPicker = document.getElementById('line-width');
+    const imageUpload = document.getElementById('image-upload');
+
+    let isDrawing = false;
+    let currentTool = 'pencil';
+    let lastX = 0;
+    let lastY = 0;
+    let startX = 0;
+    let startY = 0;
+    let canvasState = [];
+
+    function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = Math.min(canvas.offsetWidth * 0.6, 600);
+        
+        // Restore last canvas state after resize
+        if (canvasState.length > 0) {
+            ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
+        }
+    }
+
+    function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`${tool}-btn`).classList.add('active');
+    }
+
+    function startDrawing(e) {
+        isDrawing = true;
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+        [startX, startY] = [e.offsetX, e.offsetY];
+        
+        // Save current canvas state for shape drawing
+        canvasState.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        const currentX = e.offsetX;
+        const currentY = e.offsetY;
+        
+        ctx.beginPath();
+        ctx.lineWidth = lineWidthPicker.value;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = currentTool === 'eraser' ? 'white' : colorPicker.value;
+
+        switch(currentTool) {
+            case 'pencil':
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(currentX, currentY);
+                ctx.stroke();
+                [lastX, lastY] = [currentX, currentY];
+                break;
+            
+            case 'line':
+                // Restore previous canvas state
+                ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(currentX, currentY);
+                ctx.stroke();
+                break;
+            
+            case 'circle':
+                // Restore previous canvas state
+                ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
+                const radius = Math.sqrt(
+                    Math.pow(currentX - startX, 2) + 
+                    Math.pow(currentY - startY, 2)
+                );
+                ctx.beginPath();
+                ctx.arc(startX, startY, radius, 0, Math.PI * 2);
+                ctx.stroke();
+                break;
+            
+            case 'rectangle':
+                // Restore previous canvas state
+                ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
+                const width = currentX - startX;
+                const height = currentY - startY;
+                ctx.beginPath();
+                ctx.rect(startX, startY, width, height);
+                ctx.stroke();
+                break;
+            
+            case 'eraser':
+                ctx.lineWidth = lineWidthPicker.value * 2;
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(currentX, currentY);
+                ctx.stroke();
+                [lastX, lastY] = [currentX, currentY];
+                break;
+        }
+    }
+
+    function stopDrawing() {
+        if (isDrawing) {
+            isDrawing = false;
+            // Save final state after drawing
+            canvasState.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        }
+    }
+
+    function clearCanvas() {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        canvasState = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+    }
+
+    function saveDrawing() {
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'digital_canvas_drawing.png';
+        link.href = dataURL;
+        link.click();
+    }
+
+    function importImage(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                // Scale image to fit canvas while maintaining aspect ratio
+                const scale = Math.min(
+                    canvas.width / img.width, 
+                    canvas.height / img.height
+                );
+                const scaledWidth = img.width * scale;
+                const scaledHeight = img.height * scale;
+                const x = (canvas.width - scaledWidth) / 2;
+                const y = (canvas.height - scaledHeight) / 2;
+
+                ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                canvasState.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Event Listeners
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    imageUpload.addEventListener('change', importImage);
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Initialize canvas with white background
+    clearCanvas();
+</script>
+{% endblock %}
