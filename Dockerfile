@@ -15,10 +15,13 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Download NLTK data
+RUN python -c "import nltk; nltk.download('punkt', download_dir='/usr/local/share/nltk_data')"
+
 # Copy the rest of the project files
 COPY . .
 
-# Use a default port if not set
+# Use environment variable for port
 ENV PORT=5000
 
 # Expose the port

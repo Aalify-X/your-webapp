@@ -10,7 +10,8 @@ itsdangerous==2.2.0
 gunicorn==20.1.0
 python-dotenv==1.0.0
 
-# NLP (Lighter Model)
+# NLP Dependencies
+nltk==3.8.1
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
 
 # Minimal Scientific Computing
@@ -24,9 +25,6 @@ pdfminer.six==20221105
 # Utility Libraries
 requests==2.31.0
 six==1.17.0
-
-# Database (if needed)
-# SQLAlchemy==1.4.41
 
 # Minimal Data Processing
 pandas==2.2.3
