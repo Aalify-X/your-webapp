@@ -24,12 +24,12 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 COPY . /app
 
 # Install Python dependencies with reduced memory footprint
-<<<<<<< HEAD
+
 RUN pip install --no-cache-dir -r requirements.txt
-=======
+
 RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir torch==2.0.0 --extra-index-url https://download.pytorch.org/whl/cpu
->>>>>>> 79a5c05ae607d692fd31f82115edc984503c6c50
+
 
 # Download NLTK resources
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
