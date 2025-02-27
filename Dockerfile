@@ -15,8 +15,14 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download NLTK data
-RUN python -c "import nltk; nltk.download('punkt', download_dir='/usr/local/share/nltk_data')"
+# Download NLTK data with error handling
+RUN python -c "import nltk; \
+    try: \
+        nltk.download('punkt', download_dir='/usr/local/share/nltk_data'); \
+        nltk.download('wordnet', download_dir='/usr/local/share/nltk_data'); \
+    except Exception as e: \
+        print(f'NLTK download error: {e}'); \
+        exit(1)"
 
 # Copy the rest of the project files
 COPY . .
