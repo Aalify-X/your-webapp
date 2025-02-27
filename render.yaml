@@ -1,17 +1,14 @@
 type: web
-name: Progrify
+name: progrify
 runtime: docker
 region: oregon  # Change as needed
 plan: free  
 healthCheckPath: /
-
-env:
+envVars:
   - key: PORT
     value: 5000
   - key: FLASK_ENV
     value: production
-  - key: PYTHONUNBUFFERED
-    value: "1"
   - key: WEB_CONCURRENCY
     value: "2"  # Adjust based on memory constraints
 

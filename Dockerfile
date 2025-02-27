@@ -18,11 +18,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the project files
 COPY . .
 
-# Use environment variable for port
+# Use a default port if not set
 ENV PORT=5000
 
 # Expose the port
 EXPOSE 5000
 
 # Use gunicorn for production with reduced workers
-CMD ["gunicorn", "--workers", "2", "--threads", "2", "--bind", "0.0.0.0:$PORT", "app:app"]
+CMD exec gunicorn --workers 2 --threads 2 --bind 0.0.0.0:${PORT} app:app
