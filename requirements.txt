@@ -1,36 +1,42 @@
-# Core Flask Dependencies
+# Core Web Framework
 Flask==2.3.2
 Flask-WTF==1.2.1
 Flask-Cors==4.0.0
-Werkzeug==2.3.6
-Jinja2==3.1.5
-itsdangerous==2.2.0
-
-# Deployment
 gunicorn==20.1.0
 python-dotenv==1.0.0
-
-# NLP Dependencies
-nltk==3.8.1
-click==8.1.8  # Ensure click is available for NLTK
-sumy==0.11.0  # Text summarization library
-joblib==1.4.2  # Additional dependency for NLP
-en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
-
-# Minimal Scientific Computing
-numpy==1.26.3
-scipy==1.15.1
 
 # PDF Processing
 PyPDF2==3.0.1
 pdfminer.six==20221105
 
-# Utility Libraries
-requests==2.31.0
-six==1.17.0
+# NLP and Text Processing
+nltk==3.8.1
+sumy==0.11.0
+transformers==4.48.3
+torch==2.6.0
+sentencepiece==0.2.0
 
-# Minimal Data Processing
+# Machine Learning and Data Processing
+numpy==1.26.3
+scikit-learn==1.6.1
 pandas==2.2.3
 
-# Logging
+# Web and Networking
+requests==2.31.0
+urllib3==2.3.0
+
+# Authentication and Security
+python-multipart==0.0.9
+WTForms==3.2.1
+cryptography==44.0.0
+
+# Utility Libraries
+click==8.1.8
+itsdangerous==2.2.0
+Jinja2==3.1.5
+MarkupSafe==3.0.2
+Werkzeug==2.3.6
+
+# Optional: Logging and Debugging
 rich==13.9.4
+
