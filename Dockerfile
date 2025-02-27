@@ -10,7 +10,6 @@ ENV NAME Progrify
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
- 8a9d2ddd898b965fd74f41343ab452c2e2ff5db2
 # Set the working directory in the container
 WORKDIR /app
 
@@ -54,6 +53,5 @@ EXPOSE 5000
 # Define environment variable
 ENV NAME Progrify
 
- 8a9d2ddd898b965fd74f41343ab452c2e2ff5db2
 # Run app.py when the container launches
 CMD ["python", "app.py"]
