@@ -13,6 +13,8 @@ python-dotenv==1.0.0
 # NLP Dependencies
 nltk==3.8.1
 click==8.1.8  # Ensure click is available for NLTK
+sumy==0.11.0  # Text summarization library
+joblib==1.4.2  # Additional dependency for NLP
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
 
 # Minimal Scientific Computing
