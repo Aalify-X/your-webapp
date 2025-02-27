@@ -1,27 +1,34 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11
+FROM python:3.11-slim
 
 # Set the working directory
 WORKDIR /app
 
-<<<<<<< HEAD
 # Create swap file to help with memory-intensive operations
 RUN fallocate -l 1G /swapfile && \
     chmod 600 /swapfile && \
     mkswap /swapfile && \
     swapon /swapfile
 
-=======
->>>>>>> origin/main
-# Copy the project files into the container
-COPY . /app
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Copy only requirements first to leverage docker cache
+COPY requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose the required port (Render uses PORT environment variable)
-ENV PORT=8080
-EXPOSE 8080
+# Copy the rest of the project files
+COPY . .
 
-# Run the application
-CMD ["python", "app.py"]  # Change this if your main file is different
+# Use environment variable for port
+ENV PORT=5000
+
+# Expose the port
+EXPOSE 5000
+
+# Use gunicorn for production
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "app:app"]
