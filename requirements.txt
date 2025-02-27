@@ -42,3 +42,6 @@ itsdangerous>=2.2.0
 
 # Optional: Logging and Debugging
 rich>=13.9.4
+
+# Hugging Face Model Dependencies
+huggingface_hub>=0.16.4

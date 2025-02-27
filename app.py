@@ -47,9 +47,9 @@ question_generator = None
 try:
     from transformers import pipeline
     
-    # Use smaller, more memory-efficient models
-    summarizer = pipeline("summarization", model="facebook/bart-small-cnn", max_length=130, min_length=30)
-    question_generator = pipeline("text2text-generation", model="google/flan-t5-small")
+    # Use a more reliable, publicly available model
+    summarizer = pipeline("summarization", model="t5-small")
+    question_generator = pipeline("text2text-generation", model="t5-small")
 except Exception as e:
     print(f"Transformers pipeline loading failed: {e}")
     summarizer = None
@@ -74,8 +74,13 @@ def extract_key_topics_fallback(text, top_n=3):
 
 def fallback_summarize(text, num_lines=3):
     """Simple extractive summarization if no ML model is available."""
-    sentences = sent_tokenize(text)
-    return '. '.join(sentences[:num_lines]) + '.'
+    try:
+        import nltk
+        sentences = nltk.sent_tokenize(text)
+        return '. '.join(sentences[:num_lines]) + '.'
+    except Exception as e:
+        print(f"Error in fallback summarization: {e}")
+        return text[:500]  # Return first 500 characters as a fallback
 
 def fallback_generate_questions(text, num_questions=2):
     """Generate basic questions if no ML model is available."""
