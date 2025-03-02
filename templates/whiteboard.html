@@ -8,6 +8,7 @@
         background-color: #f4f6f9;
         margin: 0;
         padding: 0;
+        touch-action: none; /* Prevent default touch behaviors */
     }
 
     .whiteboard-container {
@@ -40,6 +41,7 @@
         display: flex;
         align-items: center;
         gap: 5px;
+        touch-action: manipulation; /* Improve button tap behavior */
     }
     
     .tool-btn.active {
@@ -58,6 +60,7 @@
         cursor: crosshair;
         width: 100%;
         max-height: 600px;
+        touch-action: none; /* Disable browser touch actions */
     }
 
     .canvas-controls {
@@ -65,6 +68,7 @@
         align-items: center;
         gap: 15px;
         margin-bottom: 15px;
+        flex-wrap: wrap;
     }
 
     .canvas-controls input[type="color"] {
@@ -77,10 +81,31 @@
 
     .canvas-controls input[type="range"] {
         flex-grow: 1;
+        min-width: 100px;
     }
 
     .image-upload {
         display: none;
+    }
+
+    @media (max-width: 768px) {
+        .whiteboard-container {
+            padding: 10px;
+        }
+        
+        .tool-btn {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        .canvas-controls {
+            gap: 10px;
+        }
+        
+        .canvas-controls input[type="color"] {
+            width: 40px;
+            height: 40px;
+        }
     }
 </style>
 {% endblock %}
@@ -89,7 +114,7 @@
 <div class="whiteboard-container">
     <div class="controls">
         <div class="canvas-controls">
-            <button onclick="setTool('pencil')" class="tool-btn" id="pencil-btn">✏️ Pencil</button>
+            <button onclick="setTool('pencil')" class="tool-btn" id="pencil-btn">✏ Pencil</button>
             <button onclick="setTool('eraser')" class="tool-btn" id="eraser-btn">🧹 Eraser</button>
             <button onclick="setTool('line')" class="tool-btn" id="line-btn">📏 Line</button>
             <button onclick="setTool('circle')" class="tool-btn" id="circle-btn">⭕ Circle</button>
@@ -98,7 +123,7 @@
             <input type="color" id="color-picker" value="#000000">
             <input type="range" id="line-width" min="1" max="50" value="5">
             
-            <button onclick="clearCanvas()" class="tool-btn">🗑️ Clear</button>
+            <button onclick="clearCanvas()" class="tool-btn">🗑 Clear</button>
             <button onclick="saveDrawing()" class="tool-btn">💾 Save</button>
             
             <label for="image-upload" class="tool-btn">📤 Import Image
@@ -125,12 +150,27 @@
     let startX = 0;
     let startY = 0;
     let canvasState = [];
+    let touchIdentifier = null;
+
+    // Mobile-friendly coordinate getter
+    function getCanvasCoordinates(e) {
+        const rect = canvas.getBoundingClientRect();
+        if (e.touches) {
+            return {
+                x: e.touches[0].clientX - rect.left,
+                y: e.touches[0].clientY - rect.top
+            };
+        }
+        return {
+            x: e.offsetX,
+            y: e.offsetY
+        };
+    }
 
     function resizeCanvas() {
         canvas.width = canvas.offsetWidth;
         canvas.height = Math.min(canvas.offsetWidth * 0.6, 600);
         
-        // Restore last canvas state after resize
         if (canvasState.length > 0) {
             ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
         }
@@ -143,19 +183,35 @@
     }
 
     function startDrawing(e) {
-        isDrawing = true;
-        [lastX, lastY] = [e.offsetX, e.offsetY];
-        [startX, startY] = [e.offsetX, e.offsetY];
+        e.preventDefault();
+        if (e.touches && e.touches.length > 1) return; // Ignore multi-touch
         
-        // Save current canvas state for shape drawing
+        isDrawing = true;
+        const coords = getCanvasCoordinates(e);
+        lastX = startX = coords.x;
+        lastY = startY = coords.y;
+        
+        if (e.touches) {
+            touchIdentifier = e.touches[0].identifier;
+        }
+        
         canvasState.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
     }
 
     function draw(e) {
         if (!isDrawing) return;
+        e.preventDefault();
         
-        const currentX = e.offsetX;
-        const currentY = e.offsetY;
+        // Handle touch identifier mismatch
+        if (e.touches && touchIdentifier !== null) {
+            const touch = Array.from(e.touches).find(t => t.identifier === touchIdentifier);
+            if (!touch) return;
+            e = { touches: [touch] };
+        }
+
+        const coords = getCanvasCoordinates(e);
+        const currentX = coords.x;
+        const currentY = coords.y;
         
         ctx.beginPath();
         ctx.lineWidth = lineWidthPicker.value;
@@ -171,7 +227,6 @@
                 break;
             
             case 'line':
-                // Restore previous canvas state
                 ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
@@ -180,7 +235,6 @@
                 break;
             
             case 'circle':
-                // Restore previous canvas state
                 ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
                 const radius = Math.sqrt(
                     Math.pow(currentX - startX, 2) + 
@@ -192,7 +246,6 @@
                 break;
             
             case 'rectangle':
-                // Restore previous canvas state
                 ctx.putImageData(canvasState[canvasState.length - 1], 0, 0);
                 const width = currentX - startX;
                 const height = currentY - startY;
@@ -211,10 +264,11 @@
         }
     }
 
-    function stopDrawing() {
+    function stopDrawing(e) {
+        e.preventDefault();
         if (isDrawing) {
             isDrawing = false;
-            // Save final state after drawing
+            touchIdentifier = null;
             canvasState.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
         }
     }
@@ -241,7 +295,6 @@
         reader.onload = function(event) {
             const img = new Image();
             img.onload = function() {
-                // Scale image to fit canvas while maintaining aspect ratio
                 const scale = Math.min(
                     canvas.width / img.width, 
                     canvas.height / img.height
@@ -264,12 +317,19 @@
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
     canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Touch event listeners
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchcancel', stopDrawing);
+
     imageUpload.addEventListener('change', importImage);
 
     window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    window.addEventListener('orientationchange', resizeCanvas); // For mobile rotation
 
-    // Initialize canvas with white background
+    resizeCanvas();
     clearCanvas();
 </script>
 {% endblock %}
