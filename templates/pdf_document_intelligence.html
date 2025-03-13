@@ -111,6 +111,13 @@
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 <script>
+    const stopWords = new Set([
+        'the', 'and', 'of', 'to', 'a', 'in', 'that', 'is', 'it', 'with',
+        'as', 'for', 'on', 'this', 'be', 'are', 'was', 'were', 'at', 'by',
+        'from', 'or', 'an', 'but', 'not', 'which', 'you', 'they', 'we', 'he',
+        'she', 'it', 'my', 'our', 'their', 'his', 'her', 'its', 'them'
+    ]);
+
     async function processPDF() {
         const fileInput = document.getElementById('pdf-file');
         const summaryLength = parseInt(document.getElementById('summary-length').value);
@@ -127,6 +134,7 @@
         outputBox.style.display = 'none';
 
         const file = fileInput.files[0];
+        console.log('Processing PDF file:', file.name);
         const reader = new FileReader();
 
         reader.onload = async function(e) {
@@ -141,6 +149,7 @@
                     pdfText += textContent.items.map(item => item.str).join(' ') + "\n";
                 }
 
+                console.log('Extracted PDF text:', pdfText);
                 generateSummary(summaryLength, questionCount, pdfText);
             } catch (error) {
                 alert('Error processing PDF: ' + error);
@@ -152,30 +161,74 @@
     }
 
     function generateSummary(summaryLength, questionCount, pdfText) {
-        if (!pdfText) {
-            alert('No text extracted from the PDF.');
-            return;
-        }
+        console.log('Received PDF text for summary:', pdfText);
+        const sentences = pdfText.match(/[^.!?]+[.!?]+/g) || []; 
+        const wordFrequency = createWordMap(pdfText);
+        
+        const scoredSentences = sentences.map(sentence => ({
+            text: sentence,
+            score: calculateSentenceScore(sentence, wordFrequency)
+        }));
 
-        const sentences = pdfText.split('. ');
-        let summary = sentences.slice(0, summaryLength).join('. ') + '.';
-        summary = summary || 'No summary available for this PDF.';
+        const sortedSentences = scoredSentences.sort((a, b) => b.score - a.score);
+        const topSentences = sortedSentences.slice(0, summaryLength)
+            .sort((a, b) => sentences.indexOf(a.text) - sentences.indexOf(b.text));
 
-        const questions = generateQuestions(questionCount);
+        const summary = topSentences.map(s => s.text).join(' ') || 'No summary available.';
 
-        document.getElementById('summary-output').innerHTML = summary;
-        document.getElementById('questions-output').innerHTML = questions.map(q => `<li>${q}</li>`).join('');
+        const keyTerms = getKeyTerms(wordFrequency, questionCount);
+        const questions = generateQuestions(keyTerms, questionCount);
+
+        document.getElementById('summary-output').textContent = summary;
+        document.getElementById('questions-output').innerHTML = questions.map(q => 
+            `<li>${q}</li>`).join('');
 
         document.getElementById('loader').style.display = 'none';
         document.getElementById('output-box').style.display = 'block';
     }
 
-    function generateQuestions(questionCount) {
-        const questions = [];
-        for (let i = 1; i <= questionCount; i++) {
-            questions.push(`What is the key point of section ${i}?`);
-        }
-        return questions;
+    function createWordMap(text) {
+        const words = text.toLowerCase()
+            .match(/\b[\w']+\b/g) || [];
+        const frequencyMap = {};
+        
+        words.forEach(word => {
+            if (stopWords.has(word)) return;
+            frequencyMap[word] = (frequencyMap[word] || 0) + 1;
+        });
+        
+        return frequencyMap;
+    }
+
+    function calculateSentenceScore(sentence, wordMap) {
+        const words = sentence.toLowerCase().match(/\b[\w']+\b/g) || [];
+        return words.reduce((acc, word) => acc + (wordMap[word] || 0), 0);
+    }
+
+    function getKeyTerms(wordMap, count) {
+        return Object.entries(wordMap)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, count * 2) 
+            .map(([term]) => term)
+            .filter(term => term.length > 3 && !/\d/.test(term))
+            .slice(0, count);
+    }
+
+    function generateQuestions(terms, count) {
+        const questionTemplates = [
+            "What is the significance of '{term}' in the context?",
+            "How does '{term}' contribute to the main topic?",
+            "What would be the impact of {term} according to the document?",
+            "Can you explain the concept of '{term}' in detail?",
+            "Why is {term} important in this discussion?",
+            "What are the key characteristics of {term}?",
+            "How is {term} related to other concepts ?"
+        ];
+
+        return terms.slice(0, count).map(term => {
+            const template = questionTemplates[Math.floor(Math.random() * questionTemplates.length)];
+            return template.replace(/{term}/g, term.charAt(0).toUpperCase() + term.slice(1));
+        });
     }
 </script>
 {% endblock %}
