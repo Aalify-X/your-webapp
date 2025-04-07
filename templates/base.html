@@ -178,6 +178,20 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
+    <!-- Link to Firebase logic -->
+    <script src="/static/firebase.js"></script>
+
+    <!-- Email Modal -->
+    <div id="emailModal" style="display:none;">
+        <input type="email" id="emailInput" placeholder="Enter your email">
+        <button id="sendLink">Send Magic Link</button>
+    </div>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
