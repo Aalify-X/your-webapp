@@ -10,9 +10,8 @@ ENV NAME Progrify
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies with retries
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# Install system dependencies with retry mechanism
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     git \
@@ -21,15 +20,20 @@ RUN apt-get update && \
 # Upgrade pip and setuptools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Copy only requirements.txt first to leverage Docker cache
+COPY requirements.txt .
 
 # Install Python dependencies with reduced memory footprint
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
+COPY . .
 
 # Download NLTK resources
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
+
+# Install torch with retry mechanism
+RUN pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Expose the port the app runs on
 EXPOSE 5000
