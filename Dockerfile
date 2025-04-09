@@ -10,8 +10,9 @@ ENV NAME Progrify
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies with retries
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     git \
