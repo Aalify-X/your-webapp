@@ -13,6 +13,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+// Initialize authentication state observer immediately
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    showApp();
+    showLoginState(user);
+  } else {
+    showLoginForm();
+    lblAuthState.innerHTML = '';
+  }
+});
+
 // DOM Elements
 const txtEmail = document.querySelector('#txtEmail');
 const txtPassword = document.querySelector('#txtPassword');
@@ -84,16 +95,5 @@ btnLogout.addEventListener('click', async () => {
     lblAuthState.innerHTML = '';
   } catch (error) {
     showLoginError(error);
-  }
-});
-
-// Authentication state observer
-auth.onAuthStateChanged((user) => {
-  if (user) {
-    showApp();
-    showLoginState(user);
-  } else {
-    showLoginForm();
-    lblAuthState.innerHTML = '';
   }
 });
