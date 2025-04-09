@@ -16,63 +16,42 @@
         <div class="header">
             <h1>Welcome to Progrify</h1>
         </div>
-        <form>
-            <div class="group">
-                <input id="txtEmail" type="email">
-                <label>Email</label>
+        <form class="auth-form">
+            <div class="form-group">
+                <input id="txtEmail" type="email" placeholder="Email">
+                <label for="txtEmail">Email</label>
             </div>
-            <div class="group">
-                <input id="txtPassword" type="password">
-                <label>Password</label>
+            <div class="form-group">
+                <input id="txtPassword" type="password" placeholder="Password">
+                <label for="txtPassword">Password</label>
             </div>
-            <div class="group"></div>
-            <button id="btnLogin" type="button" class="button buttonBlue">Log in</button>
-            <button id="btnSignup" type="button" class="button buttonBlue">Sign up</button>
+            <div class="button-group">
+                <button id="btnLogin" type="button" class="button buttonBlue">Log in</button>
+                <button id="btnSignup" type="button" class="button buttonBlue">Sign up</button>
+            </div>
         </form>
     </div>
 
     <div id="app" style="display: none;">
         <div class="header">
-            <h1>Productivity Reimagined</h1>
-            <div class="powered-by">Powered by TIRON</div>
-        </div>
-
-        <div id="features" class="features">
-            <div class="feature">
-                <div class="level-indicator">Feature 1</div>
-                <div class="feature-icon">📄</div>
-                <h3>Document Intelligence</h3>
-                <p>Transform PDFs into actionable insights with advanced text analysis.</p>
-                <a href="/pdf_document_intelligence" class="btn">Analyze PDFs</a>
-            </div>
-
-            <div class="feature">
-                <div class="level-indicator">Feature 2</div>
-                <div class="feature-icon">🃏</div>
-                <h3>Smart Flash Card</h3>
-                <p>Create, organize, and connect your learning with intelligent flashcards.</p>
-                <a href="/flashcards" class="btn">Build Knowledge</a>
-            </div>
-
-            <div class="feature">
-                <div class="level-indicator">Feature 3</div>
-                <div class="feature-icon">📝</div>
-                <h3>Digital Canvas</h3>
-                <p>Unleash your creativity with an intuitive digital whiteboard.</p>
-                <a href="/whiteboard_view" class="btn">Start Creating</a>
-            </div>
-
-            <div class="feature">
-                <div class="level-indicator">Feature 4</div>
-                <div class="feature-icon">📅</div>
-                <h3>Digital Planner</h3>
-                <p>Organize tasks, track habits, and manage your daily schedule.</p>
-                <a href="/digital_planner" class="btn">Plan Your Day</a>
-            </div>
-        </div>
-
-        <div class="auth-section">
+            <h1>Progrify Dashboard</h1>
             <div id="lblAuthState" class="authlabel"></div>
+        </div>
+        <div class="content">
+            <div class="features">
+                <div class="feature">
+                    <h3>Document Intelligence</h3>
+                    <p>Transform PDFs into actionable insights</p>
+                </div>
+                <div class="feature">
+                    <h3>Smart Flash Cards</h3>
+                    <p>Create and organize your learning</p>
+                </div>
+                <div class="feature">
+                    <h3>Digital Planner</h3>
+                    <p>Organize your daily schedule</p>
+                </div>
+            </div>
             <button id="btnLogout" type="button" class="button buttonBlue">Log out</button>
         </div>
     </div>

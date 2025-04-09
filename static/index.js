@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC4jmpXYuACe3KzZulDPIPHvVnNG4GWGfM",
@@ -15,6 +15,7 @@ const auth = getAuth(app);
 
 // DOM Elements
 const txtEmail = document.querySelector('#txtEmail');
+const txtPassword = document.querySelector('#txtPassword');
 const btnLogin = document.querySelector('#btnLogin');
 const btnSignup = document.querySelector('#btnSignup');
 const btnLogout = document.querySelector('#btnLogout');
@@ -47,70 +48,43 @@ function showLoginState(user) {
   lblAuthState.innerHTML = `You're logged in as ${user.email}`;
 }
 
-// Email verification function
-async function sendVerificationEmail(email) {
-  try {
-    const actionCodeSettings = {
-      url: window.location.origin,
-      handleCodeInApp: true,
-      iOS: {
-        bundleId: 'com.example.ios'
-      },
-      android: {
-        packageName: 'com.example.android',
-        installApp: true,
-        minimumVersion: '12'
-      },
-      dynamicLinkDomain: 'progrify.page.link'
-    };
-
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    window.localStorage.setItem('emailForSignIn', email);
-    
-    // Show success message
-    alert('Verification link sent to your email. Please check your inbox and click the link to verify.');
-  } catch (error) {
-    showLoginError(error);
-  }
-}
-
-// Check if we're coming from a verification link
-window.onload = async () => {
-  const url = window.location.href;
-  const email = window.localStorage.getItem('emailForSignIn');
-  
-  if (isSignInWithEmailLink(auth, url) && email) {
-    try {
-      await signInWithEmailLink(auth, email, url);
-      showApp();
-      showLoginState(auth.currentUser);
-    } catch (error) {
-      showLoginError(error);
-    }
-  }
-};
-
 // Event Listeners
 btnLogin.addEventListener('click', async () => {
   const email = txtEmail.value;
+  const password = txtPassword.value;
   
-  if (!email) {
-    showLoginError(new Error('Please enter your email address'));
+  if (!email || !password) {
+    showLoginError(new Error('Please enter both email and password'));
     return;
   }
 
-  await sendVerificationEmail(email);
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    hideLoginError();
+    showApp();
+    showLoginState(userCredential.user);
+  } catch (error) {
+    showLoginError(error);
+  }
 });
 
 btnSignup.addEventListener('click', async () => {
   const email = txtEmail.value;
+  const password = txtPassword.value;
   
-  if (!email) {
-    showLoginError(new Error('Please enter your email address'));
+  if (!email || !password) {
+    showLoginError(new Error('Please enter both email and password'));
     return;
   }
 
-  await sendVerificationEmail(email);
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    hideLoginError();
+    showApp();
+    showLoginState(userCredential.user);
+  } catch (error) {
+    showLoginError(error);
+  }
 });
 
 btnLogout.addEventListener('click', async () => {

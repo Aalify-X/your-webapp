@@ -25,22 +25,40 @@
     </div>
     <form class="auth-form">
       <div class="form-group">
-        <input id="txtEmail" type="email" placeholder="Enter your email">
+        <input id="txtEmail" type="email" placeholder="Email">
         <label for="txtEmail">Email</label>
       </div>
+      <div class="form-group">
+        <input id="txtPassword" type="password" placeholder="Password">
+        <label for="txtPassword">Password</label>
+      </div>
       <div class="button-group">
-        <button id="btnLogin" type="button" class="button buttonBlue">Send Verification Link</button>
-        <button id="btnSignup" type="button" class="button buttonBlue">Send Verification Link</button>
+        <button id="btnLogin" type="button" class="button buttonBlue">Log in</button>
+        <button id="btnSignup" type="button" class="button buttonBlue">Sign up</button>
       </div>
     </form>
   </div>
 
   <div id="app" style="display: none;">
     <div class="header">
-      <h1>A study app that would change your life</h1>
+      <h1>Progrify Dashboard</h1>
       <div id="lblAuthState" class="authlabel"></div>
     </div>
     <div class="content">
+      <div class="features">
+        <div class="feature">
+          <h3>Document Intelligence</h3>
+          <p>Transform PDFs into actionable insights</p>
+        </div>
+        <div class="feature">
+          <h3>Smart Flash Cards</h3>
+          <p>Create and organize your learning</p>
+        </div>
+        <div class="feature">
+          <h3>Digital Planner</h3>
+          <p>Organize your daily schedule</p>
+        </div>
+      </div>
       <button id="btnLogout" type="button" class="button buttonBlue">Log out</button>
     </div>
   </div>
