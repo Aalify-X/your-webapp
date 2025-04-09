@@ -23,31 +23,26 @@
     <div class="header">
       <h1>Welcome to PROGRIFY</h1>
     </div>
-    <form>
-      <div class="group">
-        <input id="txtEmail" type="email">
-        <label>Email</label>
+    <form class="auth-form">
+      <div class="form-group">
+        <input id="txtEmail" type="email" placeholder="Enter your email">
+        <label for="txtEmail">Email</label>
       </div>
-      <div class="group">
-        <input id="txtPassword" type="password">
-        <label>Password</label>
+      <div class="button-group">
+        <button id="btnLogin" type="button" class="button buttonBlue">Send Verification Link</button>
+        <button id="btnSignup" type="button" class="button buttonBlue">Send Verification Link</button>
       </div>
-      <div class="group"></div>
-      <button id="btnLogin" type="button" class="button buttonBlue">Log in</button>
-      <button id="btnSignup" type="button" class="button buttonBlue">Sign up</button>
     </form>
   </div>
 
   <div id="app" style="display: none;">
     <div class="header">
       <h1>A study app that would change your life</h1>
+      <div id="lblAuthState" class="authlabel"></div>
     </div>
-    <form>
-      <div class="group">
-        <div id="lblAuthState" class="authlabel"></div>
-      </div>
+    <div class="content">
       <button id="btnLogout" type="button" class="button buttonBlue">Log out</button>
-    </form>
+    </div>
   </div>
 
   <script src="index.js"></script>
