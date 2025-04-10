@@ -1,5 +1,5 @@
 # Core Web Framework
-Flask==2.3.2
+Flask==2.2.5
 Flask-WTF==1.2.1
 Flask-Cors==4.0.0
 gunicorn==20.1.0
@@ -30,10 +30,10 @@ cryptography==3.4.8
 
 # Utility Libraries
 click==8.0.4
-Werkzeug==2.2.2
-Jinja2==3.1.1
+Werkzeug==2.2.3
+Jinja2==3.1.2
 MarkupSafe==2.1.1
-itsdangerous==2.2.0
+itsdangerous==2.1.2
 
 # Optional: Logging and Debugging
 rich==13.9.4
