@@ -46,5 +46,5 @@ COPY --from=builder /app .
 # Expose the port the app runs on
 EXPOSE 5000
 
-# Run app.py when the container launches
-CMD ["python", "app.py"]
+# Run app.py when the container launches using gunicorn
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "3"]
