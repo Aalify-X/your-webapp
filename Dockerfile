@@ -29,8 +29,8 @@ COPY . .
 # Download NLTK resources
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 
-# Expose the port the app runs on
+# Expose the default port
 EXPOSE 5000
 
 # Run app.py when the container launches using gunicorn
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-"]
