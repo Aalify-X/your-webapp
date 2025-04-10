@@ -10,7 +10,15 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from collections import Counter
 import re
-from pdfminer.high_level import extract_text
+
+# Optional PDF processing module
+pdfminer_available = False
+try:
+    from pdfminer.high_level import extract_text
+    pdfminer_available = True
+except ImportError:
+    print("pdfminer not available")
+
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.nlp.stemmers import Stemmer
@@ -131,7 +139,10 @@ def upload_pdf():
         file.save(filepath)
         
         # Process file with memory-efficient method
-        text = extract_pdf_text(filepath)
+        if pdfminer_available:
+            text = extract_text(filepath)
+        else:
+            text = extract_pdf_text(filepath)
         
         # Clean up temporary file
         os.remove(filepath)
