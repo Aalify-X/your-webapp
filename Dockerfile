@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.9-slim-buster as builder
+FROM python:3.9-slim as builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -10,11 +10,9 @@ ENV NAME Progrify
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies with retry mechanism
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
     curl \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip and setuptools
@@ -34,7 +32,7 @@ RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 RUN pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Final stage
-FROM python:3.9-slim-buster
+FROM python:3.9-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
