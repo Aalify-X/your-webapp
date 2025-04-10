@@ -4,8 +4,9 @@ FROM python:3.9-slim as builder
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV PORT 5000
+ENV PORT 8080
 ENV NAME Progrify
+ENV FLASK_ENV production
 
 # Set the working directory in the container
 WORKDIR /app
@@ -34,8 +35,9 @@ FROM python:3.9-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV PORT 5000
+ENV PORT 8080
 ENV NAME Progrify
+ENV FLASK_ENV production
 
 # Set the working directory in the container
 WORKDIR /app
@@ -44,7 +46,7 @@ WORKDIR /app
 COPY --from=builder /app .
 
 # Expose the port the app runs on
-EXPOSE 5000
+EXPOSE 8080
 
 # Run app.py when the container launches using gunicorn
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "3"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-"]
