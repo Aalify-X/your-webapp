@@ -48,10 +48,7 @@ question_generator = None
 # Try to import transformers if available
 try:
     from transformers import pipeline
-    
-    # Use a more reliable, publicly available model
     summarizer = pipeline("summarization", model="t5-small")
-    question_generator = pipeline("text2text-generation", model="t5-small")
 except ImportError:
     print("Transformers not available")
 
@@ -694,4 +691,5 @@ def not_found_error(error):
     return jsonify({"error": "Not found"}), 404
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    # For local development only
+    app.run(host='0.0.0.0', port=5000)
