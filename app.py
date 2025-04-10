@@ -18,14 +18,16 @@ from sumy.utils import get_stop_words
 from sumy.parsers.plaintext import PlaintextParser
 from datetime import datetime
 
-
-
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
 
 # Add CSRF protection
 csrf = CSRFProtect(app)
 app.secret_key = os.urandom(24)
+
+# Set up environment variables
+app.config['ENV'] = 'production'
+app.config['DEBUG'] = False
 
 # Add a simple route for testing
 @app.route("/")
@@ -50,10 +52,8 @@ try:
     # Use a more reliable, publicly available model
     summarizer = pipeline("summarization", model="t5-small")
     question_generator = pipeline("text2text-generation", model="t5-small")
-except Exception as e:
-    print(f"Transformers pipeline loading failed: {e}")
-    summarizer = None
-    question_generator = None
+except ImportError:
+    print("Transformers not available")
 
 # Fallback functions for text processing
 def extract_key_topics_fallback(text, top_n=3):
@@ -684,7 +684,14 @@ def digital_planner():
     theme_data = get_default_theme()
     return render_template('digital_planner.html', theme_data=theme_data)
 
+# Error handling
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal server error"}), 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return jsonify({"error": "Not found"}), 404
+
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if PORT isn't set
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
