@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, url_for, flash, redirect
 from flask_wtf import CSRFProtect
+from flask_mail import Mail, Message
 import os
 import time
 import base64
@@ -10,6 +11,25 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from collections import Counter
 import re
+import pyotp
+import random
+import string
+import json
+from functools import wraps
+from datetime import datetime
+
+# Initialize Flask app
+app = Flask(__name__, static_folder='static')
+app.secret_key = os.urandom(24)
+
+# Configure Flask-Mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'dev.aalifyx@gmail.com'  # Replace with your email
+app.config['MAIL_PASSWORD'] = 'X2010webdeveloper'  # Replace with your app-specific password
+
+mail = Mail(app)
 
 # Optional PDF processing module
 pdfminer_available = False
@@ -24,21 +44,95 @@ from sumy.summarizers.lsa import LsaSummarizer
 from sumy.nlp.stemmers import Stemmer
 from sumy.utils import get_stop_words
 from sumy.parsers.plaintext import PlaintextParser
-from datetime import datetime
 
-# Initialize Flask app
-app = Flask(__name__, static_folder='static')
+def generate_otp():
+    return ''.join(random.choices(string.digits, k=6))
 
-# Add CSRF protection
-csrf = CSRFProtect(app)
-app.secret_key = os.urandom(24)
+def send_otp_email(email, otp):
+    msg = Message('Your OTP for Progrify',
+                  sender='your-email@gmail.com',
+                  recipients=[email])
+    msg.body = f"Your one-time password (OTP) is: {otp}\nThis OTP will expire in 5 minutes."
+    mail.send(msg)
 
-# Set up environment variables
-app.config['ENV'] = 'production'
-app.config['DEBUG'] = False
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_email' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-# Add a simple route for testing
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if not email:
+            flash('Please enter your email', 'error')
+            return redirect(url_for('login'))
+
+        # Generate OTP
+        otp = generate_otp()
+        session['otp'] = otp
+        session['otp_generated_at'] = datetime.now().timestamp()
+        session['user_email'] = email
+
+        # Send OTP
+        try:
+            send_otp_email(email, otp)
+            flash('OTP sent to your email. Please check your inbox.', 'success')
+            return redirect(url_for('verify_otp'))
+        except Exception as e:
+            flash('Failed to send OTP. Please try again later.', 'error')
+            return redirect(url_for('login'))
+
+    return render_template('login.html')
+
+@app.route('/verify-otp', methods=['GET', 'POST'])
+def verify_otp():
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        entered_otp = request.form.get('otp')
+        stored_otp = session.get('otp')
+        
+        if not entered_otp:
+            flash('Please enter the OTP', 'error')
+            return redirect(url_for('verify_otp'))
+
+        if not stored_otp:
+            flash('No OTP generated. Please request a new OTP.', 'error')
+            return redirect(url_for('login'))
+
+        # Check OTP expiration (5 minutes)
+        if datetime.now().timestamp() - session.get('otp_generated_at', 0) > 300:
+            flash('OTP has expired. Please request a new OTP.', 'error')
+            return redirect(url_for('login'))
+
+        if entered_otp == stored_otp:
+            # Clear OTP related session data
+            session.pop('otp', None)
+            session.pop('otp_generated_at', None)
+            
+            # User is now logged in
+            flash('Successfully logged in!', 'success')
+            return redirect(url_for('home'))
+        else:
+            flash('Invalid OTP. Please try again.', 'error')
+            return redirect(url_for('verify_otp'))
+
+    return render_template('verify_otp.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    session.clear()
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('login'))
+
 @app.route("/")
+@login_required
 def home():
     return render_template("index.html")
 
@@ -126,6 +220,7 @@ def extract_pdf_text(pdf_path):
 
 # Route to upload and process the PDF
 @app.route('/upload_pdf', methods=['GET', 'POST'])
+@login_required
 def upload_pdf():
     # Implement more memory-efficient file handling
     try:
@@ -153,6 +248,7 @@ def upload_pdf():
 
 # Route to display the summarized text and generate flashcards
 @app.route('/generate_flashcards', methods=['GET'])
+@login_required
 def generate_flashcards():
     summarized_text = session.get('summarized_text')
     
@@ -168,11 +264,12 @@ def generate_flashcards():
 
 # Route to display uploaded PDF and its summary (for testing)
 @app.route('/pdf_document_intelligence')
+@login_required
 def pdf_document_intelligence():
     return render_template('pdf_document_intelligence.html')
 
-
 @app.route('/create_flashcard', methods=['POST'])
+@login_required
 def create_flashcard():
     try:
         data = request.get_json()
@@ -213,6 +310,7 @@ def create_flashcard():
         }), 500
 
 @app.route('/get_flashcards')
+@login_required
 def get_flashcards():
     flashcards = session.get('flashcards', [])
     return jsonify({
@@ -221,6 +319,7 @@ def get_flashcards():
     })
 
 @app.route('/delete_flashcard', methods=['POST'])
+@login_required
 def delete_flashcard():
     try:
         data = request.get_json()
@@ -252,6 +351,7 @@ def delete_flashcard():
         }), 500
 
 @app.route('/save_whiteboard', methods=['POST'])
+@login_required
 def save_whiteboard():
     try:
         data = request.get_json()
@@ -276,6 +376,7 @@ def save_whiteboard():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/get_whiteboards')
+@login_required
 def get_whiteboards():
     try:
         whiteboard_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'whiteboard')
@@ -287,11 +388,13 @@ def get_whiteboards():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/get_current_theme')
+@login_required
 def get_current_theme():
     theme_data = session.get('theme_data', get_default_theme())
     return jsonify(theme_data)
 
 @app.route('/update_theme', methods=['POST'])
+@login_required
 def update_theme():
     themes = {
         'pastel_pink': {
@@ -333,6 +436,7 @@ def update_theme():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/progress_tracking', methods=['GET', 'POST'])
+@login_required
 def progress_tracking():
     if request.method == 'POST':
         try:
@@ -384,6 +488,7 @@ def progress_tracking():
                            goals=session.get('goals', []))
 
 @app.route('/delete_pdf', methods=['POST'])
+@login_required
 def delete_pdf():
     try:
         data = request.get_json()
@@ -414,6 +519,7 @@ def delete_pdf():
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
 @app.route('/save_goal', methods=['POST'])
+@login_required
 def save_goal():
     try:
         data = request.get_json()
@@ -459,6 +565,7 @@ def save_goal():
         }), 500
 
 @app.route('/get_goals')
+@login_required
 def get_goals():
     try:
         goals = session.get('goals', [])
@@ -473,6 +580,7 @@ def get_goals():
         }), 500
 
 @app.route('/delete_goal', methods=['POST'])
+@login_required
 def delete_goal():
     try:
         data = request.get_json()
@@ -504,6 +612,7 @@ def delete_goal():
         }), 500
 
 @app.route('/save_schedule', methods=['POST'])
+@login_required
 def save_schedule():
     try:
         data = request.get_json()
@@ -553,6 +662,7 @@ def save_schedule():
         }), 500
 
 @app.route('/get_schedule')
+@login_required
 def get_schedule():
     try:
         schedule = session.get('schedule', [])
@@ -567,6 +677,7 @@ def get_schedule():
         }), 500
 
 @app.route('/delete_schedule', methods=['POST'])
+@login_required
 def delete_schedule():
     try:
         data = request.get_json()
@@ -601,6 +712,7 @@ def delete_schedule():
         }), 500
 
 @app.route('/update_goal', methods=['POST'])
+@login_required
 def update_goal():
     try:
         data = request.get_json()
@@ -641,6 +753,7 @@ def update_goal():
         }), 500
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     theme_data = session.get('theme_data', get_default_theme())
     
@@ -671,23 +784,20 @@ def get_default_theme():
         "font_family": "Arial, sans-serif"
     }
 
-@app.route('/')
-def index():
-    theme_data = get_default_theme()
-    return render_template('index.html', theme_data=theme_data)
-
-# Routes for main features
 @app.route('/flashcards')
+@login_required
 def flashcards():
     theme_data = get_default_theme()
     return render_template('flashcards.html', theme_data=theme_data)
 
 @app.route('/whiteboard_view')
+@login_required
 def whiteboard():
     theme_data = get_default_theme()
     return render_template('whiteboard.html', theme_data=theme_data)
 
 @app.route('/digital_planner')
+@login_required
 def digital_planner():
     theme_data = get_default_theme()
     return render_template('digital_planner.html', theme_data=theme_data)

@@ -5,6 +5,12 @@ Flask-Cors==4.0.0
 gunicorn==20.1.0
 python-dotenv==1.0.0
 
+# Email Sending
+flask-mail==0.9.1
+
+# OTP Generation
+pyotp==2.8.0
+
 # PDF Processing
 PyPDF2==3.0.1
 pdfminer.six==20221105
