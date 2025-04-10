@@ -10,7 +10,7 @@ ENV NAME Progrify
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies with retry mechanism
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -28,9 +28,6 @@ COPY . .
 # Download NLTK resources
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 
-# Install torch with retry mechanism
-RUN pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 --extra-index-url https://download.pytorch.org/whl/cpu
-
 # Final stage
 FROM python:3.9-slim
 
@@ -42,11 +39,6 @@ ENV NAME Progrify
 
 # Set the working directory in the container
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy from builder
 COPY --from=builder /app .
