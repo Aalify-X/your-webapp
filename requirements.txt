@@ -1,16 +1,10 @@
 # Core Web Framework
-Flask==2.2.5
-Flask-Mail==0.10.0
+Flask==2.3.2
 Flask-WTF==1.2.1
 Flask-Cors==4.0.0
+Flask-Mail==0.10.0  # Keep only this line for mail
 gunicorn==20.1.0
 python-dotenv==1.0.0
-
-# Email Sending
-flask-mail==0.9.1
-
-# OTP Generation
-pyotp==2.8.0
 
 # PDF Processing
 PyPDF2==3.0.1
@@ -19,20 +13,30 @@ pdfminer.six==20221105
 # NLP and Text Processing
 nltk==3.8.1
 sumy==0.11.0
+transformers==4.48.3
+torch==2.6.0
+sentencepiece==0.2.0
+
+# Machine Learning and Data Processing
+numpy==1.26.3
+scikit-learn==1.6.1
+pandas==2.2.3
 
 # Web and Networking
-requests==2.26.0
-urllib3==1.26.7
+requests==2.31.0
+urllib3==2.3.0
 
-# Firebase
-firebase-admin==6.2.0
+# Authentication and Security
+python-multipart==0.0.9
+WTForms==3.2.1
+cryptography==44.0.0
 
-# Required by Flask and other packages
-Werkzeug==2.2.3
-Jinja2==3.1.2
-MarkupSafe==2.1.1
-itsdangerous==2.1.2
+# Utility Libraries
+click==8.1.8
+itsdangerous==2.2.0
+Jinja2==3.1.5
+MarkupSafe==3.0.2
+Werkzeug==2.3.6
 
 # Optional: Logging and Debugging
 rich==13.9.4
-python-dotenv==1.0.0
