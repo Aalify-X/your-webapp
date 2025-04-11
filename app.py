@@ -850,6 +850,10 @@ def internal_error(error):
 def not_found_error(error):
     return jsonify({"error": "Not found"}), 404
 
+# Configure Flask app for production
+app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
+app.config['PREFERRED_URL_SCHEME'] = 'https'  # Use https for production
+
 if __name__ == "__main__":
     # For local development only
     port = int(os.environ.get('PORT', 5000))
