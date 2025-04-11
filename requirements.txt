@@ -34,3 +34,4 @@ itsdangerous==2.1.2
 
 # Optional: Logging and Debugging
 rich==13.9.4
+python-dotenv==1.0.0

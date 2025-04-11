@@ -17,17 +17,21 @@ import string
 import json
 from functools import wraps
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
-# Configure Flask-Mail
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'dev.aalifyx@gmail.com'  # Replace with your email
-app.config['MAIL_PASSWORD'] = 'X2010webdeveloper'  # Replace with your app-specific password
+# Configure Flask-Mail using environment variables
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = bool(os.getenv('MAIL_USE_TLS', True))
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
 mail = Mail(app)
 
@@ -49,8 +53,11 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
 
 def send_otp_email(email, otp):
+    if not app.config['MAIL_USERNAME'] or not app.config['MAIL_PASSWORD']:
+        raise ValueError("Email credentials not configured properly")
+        
     msg = Message('Your OTP for Progrify',
-                  sender='your-email@gmail.com',
+                  sender=app.config['MAIL_USERNAME'],
                   recipients=[email])
     msg.body = f"Your one-time password (OTP) is: {otp}\nThis OTP will expire in 5 minutes."
     mail.send(msg)
@@ -83,7 +90,7 @@ def login():
             flash('OTP sent to your email. Please check your inbox.', 'success')
             return redirect(url_for('verify_otp'))
         except Exception as e:
-            flash('Failed to send OTP. Please try again later.', 'error')
+            flash(f'Failed to send OTP: {str(e)}. Please try again later.', 'error')
             return redirect(url_for('login'))
 
     return render_template('login.html')
