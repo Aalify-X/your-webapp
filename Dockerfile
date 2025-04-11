@@ -31,7 +31,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Download NLTK resources - this will be done at runtime if needed
-RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)"
+RUN python -c "import nltk; nltk.download('punkt', quiet=True, download_dir='/usr/local/share/nltk_data'); nltk.download('stopwords', quiet=True, download_dir='/usr/local/share/nltk_data')"
+
+# Set environment variable for NLTK data path
+ENV NLTK_DATA=/usr/local/share/nltk_data
 
 # Expose the default port
 EXPOSE 5000
