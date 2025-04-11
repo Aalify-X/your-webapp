@@ -5,6 +5,7 @@ Flask-Cors==4.0.0
 Flask-Mail==0.9.1  # Changed to 0.9.1 to avoid conflicts
 gunicorn==20.1.0
 python-dotenv==1.0.0
+waitress==2.1.2  
 pyotp==2.9.0  # Added missing dependency
 blinker==1.6.2  # Required for Flask-Mail
 
