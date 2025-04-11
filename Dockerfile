@@ -23,9 +23,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip and setuptools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy requirements.txt and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --no-deps
+# Copy production requirements.txt and install dependencies
+COPY requirements.prod.txt .
+RUN pip install --no-cache-dir -r requirements.prod.txt
 
 # Copy the rest of the application
 COPY . .
