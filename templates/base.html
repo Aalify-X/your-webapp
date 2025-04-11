@@ -168,8 +168,8 @@
             <div class="banner-subtitle">Powered by TIRON</div>
         </div>
         <div class="banner-actions">
-            {% if request.endpoint != 'index' %}
-            <a href="{{ url_for('index') }}" class="back-home-btn">🏠 Home</a>
+            {% if request.endpoint != 'home' %}
+            <a href="{{ url_for('home') }}" class="back-home-btn">🏠 Home</a>
             {% endif %}
         </div>
     </div>

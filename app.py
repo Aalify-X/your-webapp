@@ -18,6 +18,7 @@ import json
 from functools import wraps
 from datetime import datetime
 from dotenv import load_dotenv
+import logging  # Added import
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +26,9 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
+
+# Configure logging
+app.logger.setLevel(logging.DEBUG)  # Added logging configuration
 
 # Configure Flask-Mail using environment variables
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
@@ -60,7 +64,35 @@ def send_otp_email(email, otp):
                   sender=app.config['MAIL_USERNAME'],
                   recipients=[email])
     msg.body = f"Your one-time password (OTP) is: {otp}\nThis OTP will expire in 5 minutes."
-    mail.send(msg)
+    
+    try:
+        mail.send(msg)
+        app.logger.info(f"Email sent successfully to {email}")
+        return True
+    except Exception as e:
+        app.logger.error(f"Error sending email to {email}: {str(e)}")
+        raise
+
+# Add the test email route
+@app.route('/test-email')
+def test_email():
+    try:
+        test_email = 'dev.aalifyx@gmail.com'
+        msg = Message('Test Email',
+                      sender=app.config['MAIL_USERNAME'],
+                      recipients=[test_email])
+        msg.body = 'This is a test email from Progrify'
+        mail.send(msg)
+        return jsonify({
+            'success': True,
+            'message': f"Test email sent to {test_email}"
+        })
+    except Exception as e:
+        app.logger.error(f"Test email failed: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 def login_required(f):
     @wraps(f)

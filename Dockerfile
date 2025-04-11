@@ -1,5 +1,5 @@
 # Use a single stage build
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -33,4 +33,4 @@ RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 EXPOSE 5000
 
 # Run app.py when the container launches using gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-"]
+CMD ["gunicorn", "--workers=2", "--bind=0.0.0.0:5000", "--timeout=120", "--worker-class=gevent", "app:app"]
