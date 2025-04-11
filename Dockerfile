@@ -27,8 +27,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only necessary files, excluding unnecessary directories
-COPY --exclude=node_modules --exclude=*.log --exclude=__pycache__ . .
+# Copy the rest of the application
+COPY . .
 
 # Download NLTK resources
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
