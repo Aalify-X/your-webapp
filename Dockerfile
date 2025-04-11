@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir gevent==23.9.1
 
 # Copy requirements.txt and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --no-deps
 
 # Copy the rest of the application
 COPY . .
