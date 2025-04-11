@@ -2,9 +2,11 @@
 Flask==2.3.2
 Flask-WTF==1.2.1
 Flask-Cors==4.0.0
-Flask-Mail==0.10.0  # Keep only this line for mail
+Flask-Mail==0.9.1  # Changed to 0.9.1 to avoid conflicts
 gunicorn==20.1.0
 python-dotenv==1.0.0
+pyotp==2.9.0  # Added missing dependency
+blinker==1.6.2  # Required for Flask-Mail
 
 # PDF Processing
 PyPDF2==3.0.1
