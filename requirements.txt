@@ -17,4 +17,4 @@ pdfminer.six>=20221105
 python-multipart>=0.0.9
 cryptography>=44.0.0
 python-jose>=3.3.0
-waitress>=2.1.2"
+waitress>=2.1.2
