@@ -23,6 +23,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip and setuptools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
+# Install gevent before other dependencies
+RUN pip install --no-cache-dir gevent==23.9.1
+
 # Copy requirements.txt and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
