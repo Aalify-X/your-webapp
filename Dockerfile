@@ -30,9 +30,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
+# Test network connectivity
+RUN python -c "import socket; print(socket.gethostbyname('google.com'))"
+
 # Download NLTK resources - create directory first
 RUN mkdir -p /usr/local/share/nltk_data
-RUN python -c "import nltk; nltk.download('punkt', quiet=True, download_dir='/usr/local/share/nltk_data'); nltk.download('stopwords', quiet=True, download_dir='/usr/local/share/nltk_data')"
+RUN python -c "import nltk; nltk.download('punkt', quiet=True, download_dir='/usr/local/share/nltk_data')"
+RUN python -c "import nltk; nltk.download('stopwords', quiet=True, download_dir='/usr/local/share/nltk_data')"
 
 # Set environment variable for NLTK data path
 ENV NLTK_DATA=/usr/local/share/nltk_data
