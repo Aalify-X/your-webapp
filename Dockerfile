@@ -30,7 +30,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Download NLTK resources - this will be done at runtime if needed
+# Download NLTK resources - create directory first
+RUN mkdir -p /usr/local/share/nltk_data
 RUN python -c "import nltk; nltk.download('punkt', quiet=True, download_dir='/usr/local/share/nltk_data'); nltk.download('stopwords', quiet=True, download_dir='/usr/local/share/nltk_data')"
 
 # Set environment variable for NLTK data path
