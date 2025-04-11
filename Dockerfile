@@ -23,9 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip and setuptools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install gevent before other dependencies
-RUN pip install --no-cache-dir gevent==23.9.1
-
 # Copy requirements.txt and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt --no-deps
@@ -40,4 +37,4 @@ RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 EXPOSE 5000
 
 # Run app.py when the container launches using gunicorn
-CMD ["gunicorn", "--workers=2", "--bind=0.0.0.0:5000", "--timeout=120", "--worker-class=gevent", "app:app"]
+CMD ["gunicorn", "--workers=2", "--bind=0.0.0.0:5000", "--timeout=300", "--worker-class=sync", "app:app"]
