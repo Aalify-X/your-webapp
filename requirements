@@ -1,0 +1,21 @@
+# Create a minimal requirements file without version constraints
+echo "Flask
+Flask-WTF
+Flask-Cors
+Flask-Mail
+gunicorn
+python-dotenv
+nltk
+torch
+transformers
+sentencepiece
+pandas
+numpy
+scikit-learn
+pillow
+PyPDF2
+pdfminer.six
+python-multipart
+cryptography
+python-jose
+waitress" > requirements.prod.txt

@@ -23,12 +23,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip and setuptools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy production requirements.txt and install dependencies
-COPY requirements.prod.txt .
-RUN pip install --no-cache-dir -r requirements.prod.txt
+# Copy requirements.txt and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
-COPY . .
+# Copy only necessary files, excluding unnecessary directories
+COPY --exclude=node_modules --exclude=*.log --exclude=__pycache__ . .
 
 # Download NLTK resources
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
