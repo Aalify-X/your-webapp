@@ -30,8 +30,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Download NLTK resources
-RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
+# Download NLTK resources - this will be done at runtime if needed
+RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)"
 
 # Expose the default port
 EXPOSE 5000
