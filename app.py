@@ -18,7 +18,7 @@ import json
 from functools import wraps
 from datetime import datetime
 from dotenv import load_dotenv
-import logging  # Added import
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -28,9 +28,9 @@ app = Flask(__name__, static_folder='static')
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
 # Configure logging
-app.logger.setLevel(logging.DEBUG)  # Added logging configuration
+app.logger.setLevel(logging.DEBUG)
 
-# Configure Flask-Mail using environment variables
+# Configure Flask-Mail
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = bool(os.getenv('MAIL_USE_TLS', True))
@@ -47,12 +47,30 @@ try:
 except ImportError:
     print("pdfminer not available")
 
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lsa import LsaSummarizer
-from sumy.nlp.stemmers import Stemmer
-from sumy.utils import get_stop_words
-from sumy.parsers.plaintext import PlaintextParser
+# Try to import transformers if available
+try:
+    from transformers import pipeline
+    summarizer = pipeline("summarization", model="t5-small")
+except ImportError as e:
+    print(f"Could not import transformers: {e}")
+    summarizer = None
+except Exception as e:
+    print(f"Error initializing summarizer: {e}")
+    summarizer = None
 
+# Download necessary NLTK resources
+try:
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+except Exception as e:
+    print(f"Could not download NLTK resources: {e}")
+
+# Configuration
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'pdf'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Helper Functions
 def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
 
@@ -73,34 +91,41 @@ def send_otp_email(email, otp):
         app.logger.error(f"Error sending email to {email}: {str(e)}")
         raise
 
-# Add the test email route
-@app.route('/test-email')
-def test_email():
-    try:
-        test_email = 'dev.aalifyx@gmail.com'
-        msg = Message('Test Email',
-                      sender=app.config['MAIL_USERNAME'],
-                      recipients=[test_email])
-        msg.body = 'This is a test email from Progrify'
-        mail.send(msg)
-        return jsonify({
-            'success': True,
-            'message': f"Test email sent to {test_email}"
-        })
-    except Exception as e:
-        app.logger.error(f"Test email failed: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_email' not in session:
+        if not session.get('logged_in'):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_pdf_text(pdf_path):
+    try:
+        reader = PyPDF2.PdfReader(open(pdf_path, 'rb'))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        print(f"Error extracting PDF text: {e}")
+        return ""
+
+def get_default_theme():
+    return {
+        "primary_color": "#3498db",
+        "secondary_color": "#2ecc71",
+        "text_color": "#333333",
+        "background_color": "#FFFFFF",
+        "font_family": "Arial, sans-serif"
+    }
+
+# Routes
+@app.route('/')
+def index():
+    return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -108,8 +133,8 @@ def login():
         email = request.form.get('email')
         if not email:
             flash('Please enter your email', 'error')
-            return redirect(url_for('login'))
-
+            return render_template('index.html', show_otp_form=False)
+        
         # Generate OTP
         otp = generate_otp()
         session['otp'] = otp
@@ -120,48 +145,51 @@ def login():
         try:
             send_otp_email(email, otp)
             flash('OTP sent to your email. Please check your inbox.', 'success')
-            return redirect(url_for('verify_otp'))
+            return render_template('index.html', show_otp_form=True, email=email)
         except Exception as e:
             flash(f'Failed to send OTP: {str(e)}. Please try again later.', 'error')
-            return redirect(url_for('login'))
+            return render_template('index.html', show_otp_form=False)
 
-    return render_template('login.html')
+    # Clear OTP-related session when accessing login page directly
+    session.pop('otp', None)
+    session.pop('otp_generated_at', None)
+    return render_template('index.html', show_otp_form=False)
 
-@app.route('/verify-otp', methods=['GET', 'POST'])
+@app.route('/verify-otp', methods=['POST'])
 def verify_otp():
     if 'user_email' not in session:
+        flash('Session expired. Please login again.', 'error')
         return redirect(url_for('login'))
 
-    if request.method == 'POST':
-        entered_otp = request.form.get('otp')
-        stored_otp = session.get('otp')
+    entered_otp = request.form.get('otp')
+    stored_otp = session.get('otp')
+    
+    if not entered_otp:
+        flash('Please enter the OTP', 'error')
+        return render_template('index.html', show_otp_form=True, email=session.get('user_email'))
+
+    if not stored_otp:
+        flash('No OTP generated. Please request a new OTP.', 'error')
+        return redirect(url_for('login'))
+
+    # Check OTP expiration (5 minutes)
+    if datetime.now().timestamp() - session.get('otp_generated_at', 0) > 300:
+        flash('OTP has expired. Please request a new OTP.', 'error')
+        return redirect(url_for('login'))
+
+    if entered_otp == stored_otp:
+        # Clear OTP related session data
+        session.pop('otp', None)
+        session.pop('otp_generated_at', None)
         
-        if not entered_otp:
-            flash('Please enter the OTP', 'error')
-            return redirect(url_for('verify_otp'))
-
-        if not stored_otp:
-            flash('No OTP generated. Please request a new OTP.', 'error')
-            return redirect(url_for('login'))
-
-        # Check OTP expiration (5 minutes)
-        if datetime.now().timestamp() - session.get('otp_generated_at', 0) > 300:
-            flash('OTP has expired. Please request a new OTP.', 'error')
-            return redirect(url_for('login'))
-
-        if entered_otp == stored_otp:
-            # Clear OTP related session data
-            session.pop('otp', None)
-            session.pop('otp_generated_at', None)
-            
-            # User is now logged in
-            flash('Successfully logged in!', 'success')
-            return redirect(url_for('home'))
-        else:
-            flash('Invalid OTP. Please try again.', 'error')
-            return redirect(url_for('verify_otp'))
-
-    return render_template('verify_otp.html')
+        # Mark user as logged in
+        session['logged_in'] = True
+        
+        flash('Successfully logged in!', 'success')
+        return redirect(url_for('home'))
+    else:
+        flash('Invalid OTP. Please try again.', 'error')
+        return render_template('index.html', show_otp_form=True, email=session.get('user_email'))
 
 @app.route('/logout')
 @login_required
@@ -170,10 +198,11 @@ def logout():
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
 
-@app.route("/")
+@app.route('/home')
 @login_required
 def home():
-    return render_template("index.html")
+    return render_template('home.html', theme_data=session.get('theme_data', get_default_theme()))
+
 
 # Download necessary NLTK resources
 try:
@@ -850,11 +879,8 @@ def internal_error(error):
 def not_found_error(error):
     return jsonify({"error": "Not found"}), 404
 
-# Configure Flask app for production
-app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
-app.config['PREFERRED_URL_SCHEME'] = 'https'  # Use https for production
-
 if __name__ == "__main__":
     # For local development only
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
