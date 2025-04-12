@@ -1,4 +1,4 @@
-# Use a single stage build
+# Use a slim Python base image
 FROM python:3.11-slim
 
 # Set environment variables
@@ -7,6 +7,7 @@ ENV PYTHONUNBUFFERED 1
 ENV PORT 5000
 ENV NAME Progrify
 ENV FLASK_ENV production
+ENV GUNICORN_CMD_ARGS="--workers=1 --threads=2 --timeout=300 --keep-alive=2"
 
 # Set the working directory in the container
 WORKDIR /app
@@ -30,19 +31,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Test network connectivity
-RUN python -c "import socket; print(socket.gethostbyname('google.com'))"
-
 # Download NLTK resources - create directory first
 RUN mkdir -p /usr/local/share/nltk_data
-RUN python -c "import nltk; nltk.download('punkt', quiet=True, download_dir='/usr/local/share/nltk_data')"
-RUN python -c "import nltk; nltk.download('stopwords', quiet=True, download_dir='/usr/local/share/nltk_data')"
+RUN python -c "import nltk; nltk.download('punkt', quiet=True, download_dir='/usr/local/share/nltk_data'); nltk.download('stopwords', quiet=True, download_dir='/usr/local/share/nltk_data')"
 
 # Set environment variable for NLTK data path
 ENV NLTK_DATA=/usr/local/share/nltk_data
 
-# Expose the default port
+# Expose the port
 EXPOSE 5000
 
 # Run app.py when the container launches using gunicorn
-CMD ["gunicorn", "--workers=2", "--bind=0.0.0.0:5000", "--timeout=300", "--worker-class=sync", "app:app"]
+CMD ["gunicorn", "--bind=0.0.0.0:$PORT", "--timeout=300", "--worker-class=sync", "app:app"]
