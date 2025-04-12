@@ -29,6 +29,8 @@ app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
 # Configure port
 app.config['PORT'] = int(os.getenv('PORT', 5000))
+app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 # Configure logging
 app.logger.setLevel(logging.DEBUG)
