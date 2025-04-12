@@ -201,7 +201,7 @@ def logout():
 @app.route('/home')
 @login_required
 def home():
-    return render_template('home.html', theme_data=session.get('theme_data', get_default_theme()))
+    return render_template('index.html', theme_data=session.get('theme_data', get_default_theme()))
 
 
 # Download necessary NLTK resources
