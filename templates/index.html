@@ -12,27 +12,47 @@
         <div id="lblLoginErrorMessage" class="errorlabel"></div>
     </div>
 
-    <div id="login" style="display: block;">
-        <div class="header">
-            <h1>Welcome to Progrify</h1>
+    <div class="container">
+        <div class="login-box">
+            {% if not show_otp_form %}
+            <!-- Login form -->
+            <h2>Progrify Login</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert {{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="input-group">
+                    <input type="email" name="email" required placeholder="Enter your email">
+                </div>
+                <button type="submit" class="btn">Send OTP</button>
+            </form>
+            {% else %}
+            <!-- OTP Verification form -->
+            <h2>Verify OTP</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert {{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            <form method="POST" action="{{ url_for('verify_otp') }}">
+                <div class="input-group">
+                    <input type="text" name="otp" required placeholder="Enter 6-digit OTP">
+                </div>
+                <button type="submit" class="btn">Verify OTP</button>
+            </form>
+            <p><a href="{{ url_for('login') }}">Request new OTP</a></p>
+            {% endif %}
         </div>
-        <form class="auth-form">
-            <div class="form-group">
-                <input id="txtEmail" type="email" placeholder="Email">
-                <label for="txtEmail">Email</label>
-            </div>
-            <div class="form-group">
-                <input id="txtPassword" type="password" placeholder="Password">
-                <label for="txtPassword">Password</label>
-            </div>
-            <div class="button-group">
-                <button id="btnLogin" type="button" class="button buttonBlue">Log in</button>
-                <button id="btnSignup" type="button" class="button buttonBlue">Sign up</button>
-            </div>
-        </form>
     </div>
 
-    <div id="app" style="display: none;">
+    {% if session.get('logged_in') %}
+    <div id="app">
         <div class="header">
             <h1>Progrify Dashboard</h1>
             <div id="lblAuthState" class="authlabel"></div>
@@ -52,13 +72,20 @@
                     <p>Organize your daily schedule</p>
                 </div>
             </div>
-            <button id="btnLogout" type="button" class="button buttonBlue">Log out</button>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <!-- Firebase scripts -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
 <script src="{{ url_for('static', filename='index.js') }}"></script>
+
+<script>
+    // Initialize Firebase if needed
+    document.addEventListener('DOMContentLoaded', function() {
+        // Your existing Firebase initialization code if any
+    });
+</script>
 {% endblock %}
