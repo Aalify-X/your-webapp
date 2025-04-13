@@ -8,6 +8,7 @@
 
 {% block content %}
 <div class="container">
+    {% if not session.get('logged_in') %}
     <div id="divLoginError" style="display: none;">
         <div id="lblLoginErrorMessage" class="errorlabel"></div>
     </div>
@@ -50,26 +51,29 @@
             {% endif %}
         </div>
     </div>
-
-    {% if session.get('logged_in') %}
+    {% else %}
     <div id="app">
         <div class="header">
             <h1>Progrify Dashboard</h1>
-            <div id="lblAuthState" class="authlabel"></div>
+            <div id="lblAuthState" class="authlabel">Welcome, {{ session.get('email') }}</div>
         </div>
         <div class="content">
             <div class="features">
-                <div class="feature">
+                <div class="feature" onclick="window.location.href='{{ url_for('digital_planner') }}'">
+                    <h3>Digital Planner</h3>
+                    <p>Organize your daily schedule</p>
+                </div>
+                <div class="feature" onclick="window.location.href='{{ url_for('document_intelligence') }}'">
                     <h3>Document Intelligence</h3>
                     <p>Transform PDFs into actionable insights</p>
                 </div>
-                <div class="feature">
+                <div class="feature" onclick="window.location.href='{{ url_for('flashcards') }}'">
                     <h3>Smart Flash Cards</h3>
                     <p>Create and organize your learning</p>
                 </div>
-                <div class="feature">
-                    <h3>Digital Planner</h3>
-                    <p>Organize your daily schedule</p>
+                <div class="feature" onclick="window.location.href='{{ url_for('whiteboard') }}'">
+                    <h3>White board</h3>
+                    <p>Doodle and sketch ideas</p>
                 </div>
             </div>
         </div>
@@ -77,15 +81,15 @@
     {% endif %}
 </div>
 
-<!-- Firebase scripts -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
-<script src="{{ url_for('static', filename='index.js') }}"></script>
-
 <script>
-    // Initialize Firebase if needed
+    // Handle success message and redirect
     document.addEventListener('DOMContentLoaded', function() {
-        // Your existing Firebase initialization code if any
+        const successMessage = document.querySelector('.alert.success');
+        if (successMessage && successMessage.textContent.includes('Successfully logged in')) {
+            setTimeout(function() {
+                window.location.href = "{{ url_for('dashboard') }}";
+            }, 2000);
+        }
     });
 </script>
 {% endblock %}
