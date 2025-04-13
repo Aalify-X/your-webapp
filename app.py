@@ -28,7 +28,7 @@ app = Flask(__name__, static_folder='static')
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
 # Configure port and server settings
-app.config['PORT'] = int(os.getenv('PORT', 8080))  # Use 8080 as default
+app.config['PORT'] = int(os.getenv('PORT', 5000))  # Use 5000 as default
 app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost')  # Remove port from server name
 app.config['PREFERRED_URL_SCHEME'] = 'https' if os.getenv('ENVIRONMENT', 'development') == 'production' else 'http'
 
@@ -891,6 +891,6 @@ def not_found_error(error):
 
 if __name__ == "__main__":
     # For local development only
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
