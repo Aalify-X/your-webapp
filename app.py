@@ -27,10 +27,10 @@ load_dotenv()
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 
-# Configure port
-app.config['PORT'] = int(os.getenv('PORT', 5000))
-app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost:5000')
-app.config['PREFERRED_URL_SCHEME'] = 'https'
+# Configure port and server settings
+app.config['PORT'] = int(os.getenv('PORT', 8080))  # Use 8080 as default
+app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', 'localhost')  # Remove port from server name
+app.config['PREFERRED_URL_SCHEME'] = 'https' if os.getenv('ENVIRONMENT', 'development') == 'production' else 'http'
 
 # Configure logging
 app.logger.setLevel(logging.DEBUG)

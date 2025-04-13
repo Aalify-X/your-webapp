@@ -39,7 +39,7 @@ RUN python -c "import nltk; nltk.download('punkt', quiet=True, download_dir='/us
 ENV NLTK_DATA=/usr/local/share/nltk_data
 
 # Expose the port
-EXPOSE 5000
+EXPOSE 8080
 
 # Run app.py when the container launches using gunicorn
 CMD ["gunicorn", "--bind=0.0.0.0:$PORT", "--timeout=300", "--worker-class=sync", "app:app"]
