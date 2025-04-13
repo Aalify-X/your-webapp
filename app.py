@@ -891,6 +891,6 @@ def not_found_error(error):
 
 if __name__ == "__main__":
     # For local development only
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
