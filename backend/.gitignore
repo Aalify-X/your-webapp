@@ -1,0 +1,8 @@
+# Python
+venv/
+node_modules/
+__pycache__/
+.pytest_cache/
+.vscode/
+.vs/
+".env"
