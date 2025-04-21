@@ -1,220 +1,169 @@
-from flask import Flask, request, jsonify
+from flask import Flask, session, redirect, url_for, request, jsonify, render_template
 from flask_cors import CORS
-from flask_mail import Mail, Message
+from auth.routes import auth_bp
+from functools import wraps
 import os
+import PyPDF2
+from docx import Document
+import requests
+import io
+from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-import logging
 
-# Load environment variables
 load_dotenv()
 
-# Initialize Flask app
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
+TEMPLATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/templates'))
+STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/static'))
 
-# Configure logging
-app.logger.setLevel(logging.INFO)
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
+app.secret_key = os.urandom(24)
 
-# Configure Flask-Mail
-app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = bool(os.getenv('MAIL_USE_TLS', True))
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+CORS(app)
+app.register_blueprint(auth_bp)
 
-mail = Mail(app)
+# OpenRouter configuration
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_HEADERS = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "http://localhost",
+    "X-Title": "MyAppPDFSummarizer"
+}
 
-# API Routes
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    return jsonify({'status': 'healthy'}), 200
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('user'):
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-# Optional PDF processing module
-pdfminer_available = False
-try:
-    from pdfminer.high_level import extract_text
-    pdfminer_available = True
-except ImportError:
-    print("pdfminer not available")
+# Routes
+@app.route('/')
+@login_required
+def index():
+    return render_template('index.html')
 
-# Try to import transformers if available
-try:
-    from transformers import pipeline
-    summarizer = pipeline("summarization", model="t5-small")
-except ImportError as e:
-    print(f"Could not import transformers: {e}")
-    summarizer = None
-except Exception as e:
-    print(f"Error initializing summarizer: {e}")
-    summarizer = None
+@app.route('/digital_planner')
+def digital_planner():
+    return render_template('digital_planner.html')
 
-# Download necessary NLTK resources
-try:
-    import nltk
-    nltk.download('punkt', quiet=True)
-    nltk.download('stopwords', quiet=True)
-except Exception as e:
-    print(f"Could not download NLTK resources: {e}")
+@app.route('/whiteboard')
+def whiteboard():
+    return render_template('whiteboard.html')
 
-# Configuration
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'pdf'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+@app.route('/flashcards')
+def flashcards():
+    return render_template('flashcards.html')
 
-# Helper Functions
-def generate_otp():
-    import random
-    import string
-    return ''.join(random.choices(string.digits, k=6))
+@app.route('/pdf_tools')
+def pdf_tools():
+    return render_template('pdf_document_intelligence.html')
 
-def send_otp_email(email, otp):
-    if not app.config['MAIL_USERNAME'] or not app.config['MAIL_PASSWORD']:
-        raise ValueError("Email credentials not configured properly")
-        
-    msg = Message('Your OTP for Progrify',
-                  sender=app.config['MAIL_USERNAME'],
-                  recipients=[email])
-    msg.body = f"Your one-time password (OTP) is: {otp}\nThis OTP will expire in 5 minutes."
-    
+# Document processing
+@app.route('/api/process_document', methods=['POST'])
+def process_document():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    filename = secure_filename(file.filename)
+
+    summary_length = int(request.form.get('summary_length', 35))
+    question_count = int(request.form.get('question_count', 10))
+
     try:
-        mail.send(msg)
-        app.logger.info(f"Email sent successfully to {email}")
-        return True
-    except Exception as e:
-        app.logger.error(f"Error sending email to {email}: {str(e)}")
-        raise
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def extract_pdf_text(pdf_path):
-    try:
-        import PyPDF2
-        reader = PyPDF2.PdfReader(open(pdf_path, 'rb'))
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
-        return text.strip()
-    except Exception as e:
-        print(f"Error extracting PDF text: {e}")
-        return ""
-
-def get_default_theme():
-    return {
-        "primary_color": "#3498db",
-        "secondary_color": "#2ecc71",
-        "text_color": "#333333",
-        "background_color": "#FFFFFF",
-        "font_family": "Arial, sans-serif"
-    }
-
-# API Routes
-@app.route('/api/upload_pdf', methods=['POST'])
-def upload_pdf():
-    try:
-        file = request.files.get('file')
-        if not file or not allowed_file(file.filename):
-            return jsonify({"error": "Invalid file"}), 400
-        
-        filename = file.filename
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        
-        if pdfminer_available:
-            text = extract_text(filepath)
+        if filename.endswith('.pdf'):
+            text = extract_text_from_pdf(file)
+        elif filename.endswith(('.doc', '.docx')):
+            text = extract_text_from_word(file)
         else:
-            text = extract_pdf_text(filepath)
-        
-        return jsonify({"text": text[:2000]})  # Limit text size
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "Unsupported file type"}), 400
 
-@app.route('/api/generate_flashcards', methods=['POST'])
-def generate_flashcards():
-    try:
-        data = request.get_json()
-        text = data.get('text')
         if not text:
-            return jsonify({"error": "No text provided"}), 400
-        
-        # Here, you can implement flashcard generation logic from the text
-        # For now, we're just displaying the text
-        flashcards = [text]  # Replace with actual flashcard generation logic
-        
-        return jsonify({"flashcards": flashcards})
+            return jsonify({"error": "No readable text in file"}), 400
+
+        summary = generate_summary(text)
+        questions = generate_questions(text)
+
+        return jsonify({
+            "summary": summary,
+            "questions": questions,
+            "status": "success"
+        })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/create_flashcard', methods=['POST'])
-def create_flashcard():
+# Helper functions
+def extract_text_from_pdf(file):
+    pdf_reader = PyPDF2.PdfReader(file)
+    return "".join([page.extract_text() or "" for page in pdf_reader.pages]).strip()
+
+def extract_text_from_word(file):
+    doc = Document(io.BytesIO(file.read()))
+    return "\n".join([para.text for para in doc.paragraphs])
+
+def query_openrouter(prompt):
+    data = {
+        "model": "mistralai/mixtral-8x7b-instruct",
+        "messages": [
+            {"role": "system", "content": "You're a helpful AI tutor."},
+            {"role": "user", "content": prompt}
+        ]
+    }
     try:
-        data = request.get_json()
-        front = data.get('front')
-        back = data.get('back')
-
-        if not front or not back:
-            return jsonify({
-                'status': 'error', 
-                'error': 'Front and back are required'
-            }), 400
-
-        # Create unique ID for the flashcard
-        new_flashcard = {
-            'id': 1,  # Replace with actual ID generation logic
-            'front': front,
-            'back': back,
-            'created_at': "2023-03-08T14:30:00"  # Replace with actual timestamp
-        }
-
-        return jsonify({
-            'status': 'success',
-            'flashcard': new_flashcard
-        }), 200
-
+        response = requests.post(OPENROUTER_URL, headers=OPENROUTER_HEADERS, json=data)
+        response.raise_for_status()
+        return response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+    except requests.exceptions.HTTPError as e:
+        print(f"OpenRouter API error: {str(e)}")
+        print(f"Response content: {response.text}")
+        return None
     except Exception as e:
-        return jsonify({
-            'status': 'error', 
-            'error': str(e)
-        }), 500
+        print(f"Unexpected error: {str(e)}")
+        return None
 
-@app.route('/api/get_flashcards', methods=['GET'])
-def get_flashcards():
+def generate_summary(text):
+    prompt = f"Write a concise summary of the following text:\n\n{text[:15000]}"
+    result = query_openrouter(prompt)
+    return result or "Failed to generate summary. Please try again."
+
+
+def generate_questions(text):
+    prompt = f"""Generate important exam-style questions with answers based on the following text.\nFormat each as:\nQ: [question]\nA: [answer]\n\n{text[:15000]}"""
+    result = query_openrouter(prompt)
     try:
-        flashcards = []  # Replace with actual flashcard retrieval logic
-        return jsonify({
-            'status': 'success',
-            'flashcards': flashcards
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'status': 'error', 
-            'error': str(e)
-        }), 500
+        with open('llm_questions_raw_output.txt', 'w', encoding='utf-8') as f:
+            f.write(repr(result))
+    except Exception as log_exc:
+        print(f"Failed to write LLM raw output: {log_exc}")
+    print('RAW LLM QUESTIONS OUTPUT:', repr(result))
 
-@app.route('/api/delete_flashcard', methods=['POST'])
-def delete_flashcard():
-    try:
-        data = request.get_json()
-        card_id = data.get('id')
+    if not result:
+        return [{"question": "Error generating questions", "answer": "Please try again"}]
 
-        if not card_id:
-            return jsonify({
-                'status': 'error', 
-                'error': 'Card ID is required'
-            }), 400
+    questions = []
+    current_q = None
+    for line in result.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith('Q:'):
+            if current_q:
+                questions.append(current_q)
+            q_text = line[2:].strip()
+            current_q = {"question": q_text, "answer": ""}
+        elif line.startswith('A:') and current_q:
+            current_q["answer"] = line[2:].strip()
+            questions.append(current_q)
+            current_q = None
+    if current_q:
+        questions.append(current_q)
+    return questions
 
-        # Find and remove the flashcard
-        return jsonify({
-            'status': 'success',
-            'message': 'Flashcard deleted successfully'
-        }), 200
-
-    except Exception as e:
-        return jsonify({
-            'status': 'error', 
-            'error': str(e)
-        }), 500
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+# Main
+if __name__ == '__main__':
+    app.run(debug=True)

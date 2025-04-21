@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Advanced Document Assistant{% endblock %}
+
+{% block additional_styles %}
+<style>
+    body {
+        font-family: var(--font-family, Arial, sans-serif);
+        background-color: var(--background-color, #f4f7f6);
+        margin: 0;
+        padding: 0;
+    }
+    .container {
+        max-width: 900px;
+        margin: 50px auto;
+        padding: 30px;
+        background-color: var(--card-background, white);
+        box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+    }
+    h1 {
+        text-align: center;
+        color: var(--theme-color-dark, #4CAF50);
+    }
+    .input-section {
+        margin: 20px 0;
+    }
+    input[type="file"] {
+        padding: 10px;
+        width: 100%;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+    button {
+        padding: 12px 20px;
+        background-color: var(--theme-color-light, #4CAF50);
+        color: white;
+        font-size: 18px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 10px;
+    }
+    button:hover {
+        background-color: var(--theme-color-dark, #45a049);
+    }
+    .output-box {
+        display: none;
+        margin-top: 30px;
+        padding: 20px;
+        background-color: #f1f1f1;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        overflow-y: scroll;
+        max-height: 300px;
+    }
+    .question-list {
+        padding-left: 20px;
+        margin-top: 15px;
+    }
+    .question-list li {
+        font-size: 16px;
+        line-height: 1.6;
+        margin: 5px 0;
+    }
+    .loader {
+        display: none;
+        text-align: center;
+        margin-top: 20px;
+    }
+    .copy-btn {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        margin-left: 10px;
+        font-size: 14px;
+    }
+    .copy-btn:hover {
+        background-color: #5a6268;
+    }
+    .output-actions {
+        margin-top: 20px;
+        display: none;
+    }
+
+    @media (max-width: 600px) {
+        .container {
+            padding: 20px;
+            margin: 20px auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Advanced Document Assistant</h1>
+
+    <div class="input-section">
+        <label for="file-input">Upload Your Document (PDF or Word):</label>
+        <input type="file" id="file-input" accept=".pdf,.doc,.docx" />
+    </div>
+
+    <button onclick="processDocument()">Generate Summary & Questions</button>
+
+    <div class="output-actions">
+        <button id="copy-summary" class="copy-btn">Copy Summary</button>
+        <button id="copy-questions" class="copy-btn">Copy Questions</button>
+    </div>
+
+    <div class="loader" id="loader">
+        <p>Loading... Please wait while we process your document.</p>
+    </div>
+
+    <div class="output-box" id="output-box">
+        <h3>Summary:</h3>
+        <div id="summary-output">No summary available.</div>
+
+        <h3>Important Questions:</h3>
+        <ul class="question-list" id="questions-output"><li>No questions generated.</li></ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function processDocument() {
+        const fileInput = document.getElementById('file-input');
+        const loader = document.getElementById('loader');
+        const outputBox = document.getElementById('output-box');
+        const copySummaryBtn = document.getElementById('copy-summary');
+        const copyQuestionsBtn = document.getElementById('copy-questions');
+        const outputActions = document.querySelector('.output-actions');
+
+        if (!fileInput.files[0]) {
+            alert('Please upload a PDF or Word document.');
+            return;
+        }
+
+        loader.style.display = 'block';
+        outputBox.style.display = 'none';
+        outputActions.style.display = 'none';
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const response = await fetch('/api/process_document', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            const summaryHTML = data.summary
+                ? formatSummary(data.summary)
+                : '<p><strong>Failed to generate summary.</strong><br>Please try again.</p>';
+
+            const questionsHTML = Array.isArray(data.questions) && data.questions.length > 0
+                ? data.questions.map(q => `<li><strong>${q.question}</strong><br>${q.answer}</li>`).join('')
+                : '<li><strong>Error generating questions</strong><br>Please try again</li>';
+
+            document.getElementById('summary-output').innerHTML = summaryHTML;
+            document.getElementById('questions-output').innerHTML = questionsHTML;
+
+            if (data.summary) {
+                copySummaryBtn.onclick = () => copyToClipboard(data.summary);
+            }
+            if (data.questions) {
+                copyQuestionsBtn.onclick = () =>
+                    copyToClipboard(data.questions.map(q => `${q.question}\n${q.answer}`).join('\n\n'));
+            }
+
+            outputActions.style.display = 'block';
+
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            loader.style.display = 'none';
+            outputBox.style.display = 'block';
+        }
+    }
+
+    function formatSummary(text) {
+        return text.split('. ').filter(s => s.trim()).map(s => {
+            const sentence = s.trim();
+            const endsWithPeriod = sentence.endsWith('.');
+            return `<p>${sentence}${endsWithPeriod ? '' : '.'}</p>`;
+        }).join('');
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+        });
+    }
+</script>
+{% endblock %}

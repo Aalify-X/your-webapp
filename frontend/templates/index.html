@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Progrify: Productivity Companion{% endblock %}
+
+{% block additional_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+{% endblock %}
+
+
+{% block content %}
+<div class="container">
+  
+    <div id="app">
+        <div class="header">
+            <h1>Your personal study space.</h1>
+            <div id="lblAuthState" class="authlabel">It's time for your comeback!</div>
+        </div>
+        <div class="content">
+            <div class="features">
+                <div class="feature" onclick="window.location.href='{{ url_for('digital_planner') }}'">
+                    <h3>🗓️ Digital Planner</h3>
+                    <p>Organize your daily schedule</p>
+                </div>
+                <div class="feature" onclick="window.location.href='{{ url_for('pdf_tools') }}'">
+                    <h3>📄 Document Intelligence</h3>
+                    <p>Transform PDFs into actionable insights</p>
+                </div>
+                <div class="feature" onclick="window.location.href='{{ url_for('flashcards') }}'">
+                    <h3>🧠 Smart Flashcards</h3>
+                    <p>Create and organize your learning</p>
+                </div>
+                <div class="feature" onclick="window.location.href='{{ url_for('whiteboard') }}'">
+                    <h3>🧽 Whiteboard</h3>
+                    <p>Doodle and sketch ideas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4jmpXYuACe3KzZulDPIPHvVnNG4GWGfM",
+        authDomain: "progrify-5d8f9.firebaseapp.com",
+        projectId: "progrify-5d8f9",
+        storageBucket: "progrify-5d8f9.appspot.com",
+        messagingSenderId: "993029193028",
+        appId: "1:993029193028:web:68f42d025213a98c676b11"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    // Optional: handle OTP via JS if needed
+    // ...
+
+    // Auto-redirect on success
+    document.addEventListener('DOMContentLoaded', function() {
+        const successMessage = document.querySelector('.alert.success');
+        if (successMessage && successMessage.textContent.includes('Successfully logged in')) {
+            setTimeout(() => {
+                window.location.href = "{{ url_for('auth.login') }}";
+            }, 2000);
+        }
+    });
+</script>
+{% endblock %}
