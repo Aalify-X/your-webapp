@@ -18,7 +18,7 @@ STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../fronten
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 app.secret_key = os.urandom(24)
 
-CORS(app, origins=["https://6806389fe1fb3bf0710368f2--playful-gingersnap-288707.netlify.app/"])
+CORS(app, origins=[https://your-frontend.onrender.com](https://your-frontend.onrender.com))
 app.register_blueprint(auth_bp)
 
 # OpenRouter configuration
