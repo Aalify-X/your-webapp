@@ -18,7 +18,7 @@ STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../fronten
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 app.secret_key = os.urandom(24)
 
-CORS(app)
+CORS(app, origins=["[https://your-frontend-url.vercel.app](https://your-frontend-url.vercel.app)"])
 app.register_blueprint(auth_bp)
 
 # OpenRouter configuration
