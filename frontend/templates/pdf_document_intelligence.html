@@ -104,6 +104,10 @@
     <div class="input-section">
         <label for="file-input">Upload Your Document (PDF or Word):</label>
         <input type="file" id="file-input" accept=".pdf,.doc,.docx" />
+        <label for="summary-length">Summary Length:</label>
+        <input type="number" id="summary-length" value="100">
+        <label for="question-count">Question Count:</label>
+        <input type="number" id="question-count" value="5">
     </div>
 
     <button onclick="processDocument()">Generate Summary & Questions</button>
@@ -118,88 +122,107 @@
     </div>
 
     <div class="output-box" id="output-box">
-        <h3>Summary:</h3>
         <div id="summary-output">No summary available.</div>
-
-        <h3>Important Questions:</h3>
-        <ul class="question-list" id="questions-output"><li>No questions generated.</li></ul>
+        <div id="questions-output">No questions generated.</div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+    // Initialize API base URL
+    const API_BASE_URL = window.location.origin;
+
     async function processDocument() {
-        const fileInput = document.getElementById('file-input');
-        const loader = document.getElementById('loader');
-        const outputBox = document.getElementById('output-box');
-        const copySummaryBtn = document.getElementById('copy-summary');
-        const copyQuestionsBtn = document.getElementById('copy-questions');
-        const outputActions = document.querySelector('.output-actions');
+    const fileInput = document.getElementById('file-input');
+    const loader = document.getElementById('loader');
+    const outputBox = document.getElementById('output-box');
+    const copySummaryBtn = document.getElementById('copy-summary');
+    const copyQuestionsBtn = document.getElementById('copy-questions');
+    const outputActions = document.querySelector('.output-actions');
+    const summaryLength = document.getElementById('summary-length').value;
+    const questionCount = document.getElementById('question-count').value;
 
-        if (!fileInput.files[0]) {
-            alert('Please upload a PDF or Word document.');
-            return;
-        }
+    if (!fileInput.files[0]) {
+        alert('Please upload a PDF or Word document.');
+        return;
+    }
 
-        loader.style.display = 'block';
-        outputBox.style.display = 'none';
-        outputActions.style.display = 'none';
+    loader.style.display = 'block';
+    outputBox.style.display = 'none';
 
+    try {
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
+        formData.append('summary_length', summaryLength);
+        formData.append('question_count', questionCount);
 
-        try {
-            const response = await fetch('/api/process_document', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            const summaryHTML = data.summary
-                ? formatSummary(data.summary)
-                : '<p><strong>Failed to generate summary.</strong><br>Please try again.</p>';
-
-            const questionsHTML = Array.isArray(data.questions) && data.questions.length > 0
-                ? data.questions.map(q => `<li><strong>${q.question}</strong><br>${q.answer}</li>`).join('')
-                : '<li><strong>Error generating questions</strong><br>Please try again</li>';
-
-            document.getElementById('summary-output').innerHTML = summaryHTML;
-            document.getElementById('questions-output').innerHTML = questionsHTML;
-
-            if (data.summary) {
-                copySummaryBtn.onclick = () => copyToClipboard(data.summary);
+        const response = await fetch(`${API_BASE_URL}/api/process_document`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json'
             }
-            if (data.questions) {
-                copyQuestionsBtn.onclick = () =>
-                    copyToClipboard(data.questions.map(q => `${q.question}\n${q.answer}`).join('\n\n'));
-            }
-
-            outputActions.style.display = 'block';
-
-        } catch (error) {
-            alert('Error: ' + error.message);
-        } finally {
-            loader.style.display = 'none';
-            outputBox.style.display = 'block';
-        }
-    }
-
-    function formatSummary(text) {
-        return text.split('. ').filter(s => s.trim()).map(s => {
-            const sentence = s.trim();
-            const endsWithPeriod = sentence.endsWith('.');
-            return `<p>${sentence}${endsWithPeriod ? '' : '.'}</p>`;
-        }).join('');
-    }
-
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert('Copied to clipboard!');
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
         });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        const summaryHTML = `
+            <h3>Summary:</h3>
+            <p>${data.summary}</p>
+        `;
+        const questionsHTML = `
+            <h3>Questions:</h3>
+            <div class="questions-list">
+                ${data.questions.map(q => `
+                    <div class="question-item">
+                        <div class="question">Q: ${q.question}</div>
+                        <div class="answer">A: ${q.answer}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        document.getElementById('summary-output').innerHTML = summaryHTML;
+        document.getElementById('questions-output').innerHTML = questionsHTML;
+
+        if (data.summary) {
+            copySummaryBtn.onclick = () => copyToClipboard(data.summary);
+        }
+        if (data.questions) {
+            copyQuestionsBtn.onclick = () =>
+                copyToClipboard(data.questions.map(q => `${q.question}\n${q.answer}`).join('\n\n'));
+        }
+
+        outputActions.style.display = 'block';
+
+    } catch (error) {
+        alert('Error: ' + error.message);
+        console.error('API Error:', error);
+    } finally {
+        loader.style.display = 'none';
+        outputBox.style.display = 'block';
     }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            alert('Copied to clipboard!');
+        })
+        .catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard');
+        });
+}
 </script>
 {% endblock %}

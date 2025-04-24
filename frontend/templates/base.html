@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>{% block title %}Progrify: Empower Your Progress{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.ico') }}">
     {% block additional_styles %}{% endblock %}
 
     <style>
@@ -195,22 +197,13 @@
         {% block content %}{% endblock %}
     </div>
 
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
-
-    <!-- Firebase SDK initialization script -->
-    <script type="module">
-      // Import the functions you need from the SDKs you need
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-      // TODO: Add SDKs for Firebase products that you want to use
-      // https://firebase.google.com/docs/web/setup#available-libraries
-
+    <!-- Firebase Configuration -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
+    <script>
       // Your web app's Firebase configuration
       const firebaseConfig = {
-        apiKey: "AIzaSyAO0IBFTx6q-Pi2ILMDAoWZmpeg95EdGAY",
+        apiKey: "AIzaSyDz4pX1234567890",
         authDomain: "progrify-881a2.firebaseapp.com",
         projectId: "progrify-881a2",
         storageBucket: "progrify-881a2.firebasestorage.app",
@@ -219,12 +212,8 @@
       };
 
       // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
+      firebase.initializeApp(firebaseConfig);
     </script>
-
-    <!-- Link to Firebase logic -->
-    <script src="/static/firebase.js"></script>
-    
 
     <!-- Email Modal -->
     <div id="emailModal" style="display:none;">

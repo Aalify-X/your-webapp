@@ -9,6 +9,7 @@ import requests
 import io
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
@@ -16,20 +17,35 @@ TEMPLATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../front
 STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/static'))
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
-app.secret_key = os.urandom(24)
 
-CORS(app, origins=["https://your-frontend.onrender.com"])
+# Use a fixed secret key for session persistence
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'NSjUyKL1$8N*@(i')
+
+# Configure session to be permanent
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # Session lasts 30 days
+
+# Configure CORS
+CORS(app, origins=["https://your-frontend.onrender.com"],
+     supports_credentials=True)
+
+# Set up session cookie settings
+app.config.update(
+    SESSION_COOKIE_SECURE=True,  # Only send cookie over HTTPS
+    SESSION_COOKIE_HTTPONLY=True,  # Prevent JavaScript access to cookie
+    SESSION_COOKIE_SAMESITE='Lax'  # Allow cross-site requests
+)
+
+# Set the port for Render
+app.config['PORT'] = int(os.getenv('PORT', 10000))
+
+# Register the auth blueprint
 app.register_blueprint(auth_bp)
 
-# OpenRouter configuration
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_HEADERS = {
-    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-    "Content-Type": "application/json",
-    "HTTP-Referer": "http://localhost",
-    "X-Title": "MyAppPDFSummarizer"
-}
+# Error handling
+@app.errorhandler(500)
+def internal_server_error(e):
+    return jsonify(error=str(e)), 500
 
 # Login required decorator
 def login_required(f):
@@ -42,6 +58,7 @@ def login_required(f):
 
 # Routes
 @app.route('/')
+@app.route('/index')
 @login_required
 def index():
     return render_template('index.html')
@@ -164,6 +181,17 @@ def generate_questions(text):
         questions.append(current_q)
     return questions
 
+# OpenRouter configuration
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_HEADERS = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "https://your-frontend.onrender.com",
+    "X-Title": "MyAppPDFSummarizer"
+}
+
 # Main
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = app.config['PORT']
+    app.run(host='0.0.0.0', port=port)

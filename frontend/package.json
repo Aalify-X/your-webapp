@@ -37,5 +37,14 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5000"
+  "proxy": {
+    "/api": {
+      "target": "https://your-webapp.onrender.com",
+      "secure": true,
+      "changeOrigin": true,
+      "headers": {
+        "Origin": "https://your-frontend.onrender.com"
+      }
+    }
+  }
 }
