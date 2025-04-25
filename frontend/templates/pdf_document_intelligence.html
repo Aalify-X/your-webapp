@@ -130,6 +130,9 @@
 
 {% block scripts %}
 <script>
+    // Initialize API base URL
+    const API_BASE_URL = window.location.origin;
+
     async function processDocument() {
         const fileInput = document.getElementById('file-input');
         const loader = document.getElementById('loader');
@@ -161,7 +164,14 @@
                 credentials: 'include'
             });
 
-            const data = await response.json();
+            const text = await response.text();
+            let data;
+            
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Invalid response: ${text.substring(0, 100)}...`);
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to process document');
@@ -170,13 +180,13 @@
             const summaryOutput = document.getElementById('summary-output');
             const questionsOutput = document.getElementById('questions-output');
 
-            summaryOutput.textContent = data.summary;
-            questionsOutput.innerHTML = data.questions.map(q => 
+            summaryOutput.textContent = data.summary || 'No summary available';
+            questionsOutput.innerHTML = data.questions ? data.questions.map(q => 
                 `<div class="question-item">
                     <div class="question">${q.question}</div>
                     <div class="answer">${q.answer}</div>
                 </div>`
-            ).join('');
+            ).join('') : 'No questions generated';
 
             loader.style.display = 'none';
             outputBox.style.display = 'block';
@@ -185,6 +195,7 @@
         } catch (error) {
             loader.style.display = 'none';
             alert(`Error: ${error.message}`);
+            console.error('API Error:', error);
         }
     }
 </script>

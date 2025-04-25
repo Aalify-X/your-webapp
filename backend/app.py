@@ -119,18 +119,31 @@ def process_document():
             print(f"Processing error: {str(e)}")
             return jsonify({"error": f"Failed to process document: {str(e)}"}), 500
 
+    except ValueError as e:
+        print(f"Value error: {str(e)}")
+        return jsonify({"error": "Invalid input parameters"}), 400
     except Exception as e:
         print(f"API error: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 # Helper functions
 def extract_text_from_pdf(file):
-    pdf_reader = PyPDF2.PdfReader(file)
-    return "".join([page.extract_text() or "" for page in pdf_reader.pages]).strip()
+    try:
+        pdf_reader = PyPDF2.PdfReader(file)
+        text = "".join([page.extract_text() or "" for page in pdf_reader.pages]).strip()
+        return text if text else "No text extracted from PDF"
+    except Exception as e:
+        print(f"PDF extraction error: {str(e)}")
+        raise
 
 def extract_text_from_word(file):
-    doc = Document(io.BytesIO(file.read()))
-    return "\n".join([para.text for para in doc.paragraphs])
+    try:
+        doc = Document(io.BytesIO(file.read()))
+        text = "\n".join([para.text for para in doc.paragraphs])
+        return text if text else "No text extracted from Word document"
+    except Exception as e:
+        print(f"Word extraction error: {str(e)}")
+        raise
 
 def query_openrouter(prompt):
     data = {
@@ -153,42 +166,43 @@ def query_openrouter(prompt):
         return None
 
 def generate_summary(text):
-    prompt = f"Write a concise summary of the following text:\n\n{text[:15000]}"
-    result = query_openrouter(prompt)
-    return result or "Failed to generate summary. Please try again."
-
+    try:
+        prompt = f"Write a concise summary of the following text:\n\n{text[:15000]}"
+        result = query_openrouter(prompt)
+        return result or "Failed to generate summary. Please try again."
+    except Exception as e:
+        print(f"Summary generation error: {str(e)}")
+        raise
 
 def generate_questions(text):
-    prompt = f"""Generate important exam-style questions with answers based on the following text.\nFormat each as:\nQ: [question]\nA: [answer]\n\n{text[:15000]}"""
-    result = query_openrouter(prompt)
     try:
-        with open('llm_questions_raw_output.txt', 'w', encoding='utf-8') as f:
-            f.write(repr(result))
-    except Exception as log_exc:
-        print(f"Failed to write LLM raw output: {log_exc}")
-    print('RAW LLM QUESTIONS OUTPUT:', repr(result))
+        prompt = f"""Generate important exam-style questions with answers based on the following text.\nFormat each as:\nQ: [question]\nA: [answer]\n\n{text[:15000]}"""
+        result = query_openrouter(prompt)
+        
+        if not result:
+            return [{"question": "Error generating questions", "answer": "Please try again"}]
 
-    if not result:
-        return [{"question": "Error generating questions", "answer": "Please try again"}]
-
-    questions = []
-    current_q = None
-    for line in result.split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith('Q:'):
-            if current_q:
+        questions = []
+        current_q = None
+        for line in result.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith('Q:'):
+                if current_q:
+                    questions.append(current_q)
+                q_text = line[2:].strip()
+                current_q = {"question": q_text, "answer": ""}
+            elif line.startswith('A:') and current_q:
+                current_q["answer"] = line[2:].strip()
                 questions.append(current_q)
-            q_text = line[2:].strip()
-            current_q = {"question": q_text, "answer": ""}
-        elif line.startswith('A:') and current_q:
-            current_q["answer"] = line[2:].strip()
+                current_q = None
+        if current_q:
             questions.append(current_q)
-            current_q = None
-    if current_q:
-        questions.append(current_q)
-    return questions
+        return questions
+    except Exception as e:
+        print(f"Question generation error: {str(e)}")
+        raise
 
 # OpenRouter configuration
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
