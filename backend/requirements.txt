@@ -6,4 +6,3 @@ python-dotenv
 PyPDF2
 python-docx
 firebase-admin
-pdf2text

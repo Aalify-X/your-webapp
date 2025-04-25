@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from datetime import timedelta
 import signal
 from contextlib import contextmanager
+from PyPDF2 import PdfReader
 
 load_dotenv()
 
@@ -173,21 +174,31 @@ def extract_text_from_pdf(file):
     try:
         # Try to read the file directly
         try:
-            text = pdf2text.extract_text(file)
-            if text and text.strip():
-                return text.strip()
-        except Exception as e:
-            print(f"First attempt failed: {str(e)}")
+            pdf_reader = PdfReader(file)
+        except Exception:
+            # If that fails, try reading as bytes
+            pdf_reader = PdfReader(BytesIO(file.read()))
+
+        text = ""
+        # Process pages in smaller batches
+        page_count = len(pdf_reader.pages)
+        batch_size = 5
+        
+        for batch_start in range(0, page_count, batch_size):
+            batch_end = min(batch_start + batch_size, page_count)
             
-        # If that fails, try reading as bytes
-        try:
-            text = pdf2text.extract_text(BytesIO(file.read()))
-            if text and text.strip():
-                return text.strip()
-        except Exception as e:
-            print(f"Second attempt failed: {str(e)}")
-            
-        return "No readable text found in PDF"
+            for page_num in range(batch_start, batch_end):
+                try:
+                    page_text = pdf_reader.pages[page_num].extract_text()
+                    if page_text:
+                        text += page_text.strip() + "\n"
+                except Exception as e:
+                    print(f"Error extracting text from page {page_num}: {str(e)}")
+                    continue
+
+        if not text.strip():
+            return "No readable text found in PDF"
+        return text.strip()
         
     except Exception as e:
         print(f"PDF extraction error: {str(e)}")
