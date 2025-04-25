@@ -3,7 +3,7 @@ from flask_cors import CORS
 from auth.routes import auth_bp
 from functools import wraps
 import os
-import PyPDF2
+import pdfplumber
 from docx import Document
 import requests
 import io
@@ -170,23 +170,22 @@ def process_document():
 def extract_text_from_pdf(file):
     try:
         with timeout(30):  # 30 second timeout for PDF processing
-            pdf_reader = PyPDF2.PdfReader(file)
-            
-            # Try to get text from each page
-            text = ""
-            for page_num in range(len(pdf_reader.pages)):
-                try:
-                    page_text = pdf_reader.pages[page_num].extract_text()
-                    if page_text:
-                        text += page_text.strip() + "\n"
-                except Exception as e:
-                    print(f"Error extracting text from page {page_num}: {str(e)}")
-                    continue
-            
-            if not text.strip():
-                return "No readable text found in PDF"
-            return text.strip()
-            
+            with pdfplumber.open(BytesIO(file.read())) as pdf:
+                text = ""
+                for page_num in range(len(pdf.pages)):
+                    try:
+                        page = pdf.pages[page_num]
+                        page_text = page.extract_text()
+                        if page_text:
+                            text += page_text.strip() + "\n"
+                    except Exception as e:
+                        print(f"Error extracting text from page {page_num}: {str(e)}")
+                        continue
+                
+                if not text.strip():
+                    return "No readable text found in PDF"
+                return text.strip()
+                
     except TimeoutException:
         print("PDF processing timed out")
         raise Exception("PDF processing took too long")
