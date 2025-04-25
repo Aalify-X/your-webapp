@@ -87,6 +87,10 @@
         margin-top: 20px;
         display: none;
     }
+    .error-message {
+        color: red;
+        font-weight: bold;
+    }
 
     @media (max-width: 600px) {
         .container {
@@ -122,6 +126,7 @@
     </div>
 
     <div class="output-box" id="output-box">
+        <div id="error-output" class="error-message" style="display:none"></div>
         <div id="summary-output">No summary available.</div>
         <div id="questions-output">No questions generated.</div>
     </div>
@@ -193,8 +198,11 @@
             outputActions.style.display = 'flex';
             
         } catch (error) {
+            const errorDiv = document.getElementById('error-output');
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = `Error: ${error.message}`;
             loader.style.display = 'none';
-            alert(`Error: ${error.message}`);
+            outputBox.style.display = 'block';
             console.error('API Error:', error);
         }
     }

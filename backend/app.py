@@ -146,24 +146,44 @@ def extract_text_from_word(file):
         raise
 
 def query_openrouter(prompt):
-    data = {
-        "model": "mistralai/mixtral-8x7b-instruct",
-        "messages": [
-            {"role": "system", "content": "You're a helpful AI tutor."},
-            {"role": "user", "content": prompt}
-        ]
-    }
     try:
-        response = requests.post(OPENROUTER_URL, headers=OPENROUTER_HEADERS, json=data)
-        response.raise_for_status()
-        return response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-    except requests.exceptions.HTTPError as e:
-        print(f"OpenRouter API error: {str(e)}")
-        print(f"Response content: {response.text}")
+        if not OPENROUTER_API_KEY:
+            raise ValueError("OpenRouter API key is not set")
+
+        data = {
+            "model": "anthropic/claude-3-sonnet-20240229",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.7,
+            "max_tokens": 1000
+        }
+
+        response = requests.post(
+            OPENROUTER_URL,
+            headers=OPENROUTER_HEADERS,
+            json=data,
+            timeout=30
+        )
+
+        if response.status_code != 200:
+            error_msg = f"OpenRouter API error: {response.status_code}"
+            if response.text:
+                error_msg += f" - {response.text[:200]}"
+            raise Exception(error_msg)
+
+        result = response.json()
+        if 'choices' in result and len(result['choices']) > 0:
+            return result['choices'][0]['message']['content']
         return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Network error: {str(e)}")
+        raise Exception(f"Network error: {str(e)}")
+    except ValueError as e:
+        print(f"Value error: {str(e)}")
+        raise Exception(f"Configuration error: {str(e)}")
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        return None
+        print(f"API error: {str(e)}")
+        raise Exception(f"Failed to get response from OpenRouter: {str(e)}")
 
 def generate_summary(text):
     try:
@@ -206,12 +226,15 @@ def generate_questions(text):
 
 # OpenRouter configuration
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+if not OPENROUTER_API_KEY:
+    raise ValueError("OpenRouter API key is not set in environment variables")
+
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json",
-    "HTTP-Referer": "https://your-frontend.onrender.com",
-    "X-Title": "MyAppPDFSummarizer"
+    "HTTP-Referer": "https://www.progrify.pro",  # Update to match your domain
+    "X-Title": "Progrify PDF Summarizer"
 }
 
 # Main
