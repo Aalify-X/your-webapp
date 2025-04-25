@@ -6,5 +6,3 @@ python-dotenv
 PyPDF2
 python-docx
 firebase-admin
-pdfplumber
-BytesIO
