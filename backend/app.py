@@ -7,6 +7,7 @@ import pdfplumber
 from docx import Document
 import requests
 import io
+from io import BytesIO
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from datetime import timedelta
