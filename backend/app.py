@@ -10,6 +10,8 @@ import io
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from datetime import timedelta
+import signal
+from contextlib import contextmanager
 
 load_dotenv()
 
@@ -79,6 +81,23 @@ def flashcards():
 def pdf_tools():
     return render_template('pdf_document_intelligence.html')
 
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Operation timed out")
+
+@contextmanager
+def timeout(seconds):
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    except TimeoutException:
+        raise
+    finally:
+        signal.alarm(0)
+
 # Document processing
 @app.route('/api/process_document', methods=['POST'])
 def process_document():
@@ -96,9 +115,9 @@ def process_document():
         question_count = int(request.form.get('question_count', 10))
 
         try:
-            if filename.endswith('.pdf'):
+            if filename.lower().endswith('.pdf'):
                 text = extract_text_from_pdf(file)
-            elif filename.endswith(('.doc', '.docx')):
+            elif filename.lower().endswith(('.doc', '.docx')):
                 text = extract_text_from_word(file)
             else:
                 return jsonify({"error": "Unsupported file type"}), 400
@@ -106,12 +125,33 @@ def process_document():
             if not text or len(text.strip()) < 100:  # Check for meaningful text
                 return jsonify({"error": "No readable text in file"}), 400
 
-            summary = generate_summary(text)
-            questions = generate_questions(text)
+            # Process text in chunks to avoid timeout
+            chunks = [text[i:i+10000] for i in range(0, len(text), 10000)]
+            summaries = []
+            questions = []
 
+            for chunk in chunks:
+                try:
+                    with timeout(30):  # 30 second timeout per chunk
+                        summary = generate_summary(chunk)
+                        if summary:
+                            summaries.append(summary)
+                        
+                        chunk_questions = generate_questions(chunk)
+                        if chunk_questions:
+                            questions.extend(chunk_questions)
+                except TimeoutException:
+                    print("Processing chunk timed out")
+                    continue
+                except Exception as e:
+                    print(f"Error processing chunk: {str(e)}")
+                    continue
+
+            final_summary = " ".join(summaries).strip()
+            
             return jsonify({
-                "summary": summary,
-                "questions": questions,
+                "summary": final_summary or "Failed to generate summary",
+                "questions": questions or ["Failed to generate questions"],
                 "status": "success"
             })
 
@@ -129,18 +169,42 @@ def process_document():
 # Helper functions
 def extract_text_from_pdf(file):
     try:
-        pdf_reader = PyPDF2.PdfReader(file)
-        text = "".join([page.extract_text() or "" for page in pdf_reader.pages]).strip()
-        return text if text else "No text extracted from PDF"
+        with timeout(30):  # 30 second timeout for PDF processing
+            pdf_reader = PyPDF2.PdfReader(file)
+            
+            # Try to get text from each page
+            text = ""
+            for page_num in range(len(pdf_reader.pages)):
+                try:
+                    page_text = pdf_reader.pages[page_num].extract_text()
+                    if page_text:
+                        text += page_text.strip() + "\n"
+                except Exception as e:
+                    print(f"Error extracting text from page {page_num}: {str(e)}")
+                    continue
+            
+            if not text.strip():
+                return "No readable text found in PDF"
+            return text.strip()
+            
+    except TimeoutException:
+        print("PDF processing timed out")
+        raise Exception("PDF processing took too long")
     except Exception as e:
         print(f"PDF extraction error: {str(e)}")
         raise
 
 def extract_text_from_word(file):
     try:
-        doc = Document(io.BytesIO(file.read()))
-        text = "\n".join([para.text for para in doc.paragraphs])
-        return text if text else "No text extracted from Word document"
+        with timeout(30):  # 30 second timeout for Word processing
+            doc = Document(io.BytesIO(file.read()))
+            text = "\n".join([para.text for para in doc.paragraphs])
+            if not text.strip():
+                return "No readable text found in Word document"
+            return text.strip()
+    except TimeoutException:
+        print("Word processing timed out")
+        raise Exception("Word processing took too long")
     except Exception as e:
         print(f"Word extraction error: {str(e)}")
         raise
