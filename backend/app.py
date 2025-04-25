@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from datetime import timedelta
 import signal
 from contextlib import contextmanager
+from PyPDF2 import PdfReader
 
 load_dotenv()
 
@@ -171,12 +172,13 @@ def process_document():
 def extract_text_from_pdf(file):
     try:
         with timeout(30):  # 30 second timeout for PDF processing
-            with pdfplumber.open(BytesIO(file.read())) as pdf:
+            try:
+                # Try to read the file directly
+                pdf_reader = PdfReader(file)
                 text = ""
-                for page_num in range(len(pdf.pages)):
+                for page_num in range(len(pdf_reader.pages)):
                     try:
-                        page = pdf.pages[page_num]
-                        page_text = page.extract_text()
+                        page_text = pdf_reader.pages[page_num].extract_text()
                         if page_text:
                             text += page_text.strip() + "\n"
                     except Exception as e:
@@ -186,6 +188,30 @@ def extract_text_from_pdf(file):
                 if not text.strip():
                     return "No readable text found in PDF"
                 return text.strip()
+                
+            except Exception as e:
+                print(f"First attempt failed: {str(e)}")
+                
+                # If first attempt fails, try reading as bytes
+                try:
+                    pdf_reader = PdfReader(BytesIO(file.read()))
+                    text = ""
+                    for page_num in range(len(pdf_reader.pages)):
+                        try:
+                            page_text = pdf_reader.pages[page_num].extract_text()
+                            if page_text:
+                                text += page_text.strip() + "\n"
+                        except Exception as e:
+                            print(f"Error extracting text from page {page_num}: {str(e)}")
+                            continue
+                    
+                    if not text.strip():
+                        return "No readable text found in PDF"
+                    return text.strip()
+                    
+                except Exception as e:
+                    print(f"Second attempt failed: {str(e)}")
+                    raise
                 
     except TimeoutException:
         print("PDF processing timed out")
