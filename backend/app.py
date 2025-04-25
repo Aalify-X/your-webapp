@@ -3,7 +3,7 @@ from flask_cors import CORS
 from auth.routes import auth_bp
 from functools import wraps
 import os
-import pdfplumber
+import pdf2text
 from docx import Document
 import requests
 import io
@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 from datetime import timedelta
 import signal
 from contextlib import contextmanager
-from PyPDF2 import PdfReader
 
 load_dotenv()
 
@@ -127,14 +126,15 @@ def process_document():
             if not text or len(text.strip()) < 100:  # Check for meaningful text
                 return jsonify({"error": "No readable text in file"}), 400
 
-            # Process text in chunks to avoid timeout
-            chunks = [text[i:i+10000] for i in range(0, len(text), 10000)]
+            # Process text in smaller chunks to prevent timeouts
+            chunk_size = 5000  # Process 5000 characters at a time
+            chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
             summaries = []
             questions = []
 
             for chunk in chunks:
                 try:
-                    with timeout(30):  # 30 second timeout per chunk
+                    with timeout(15):  # 15 second timeout per chunk
                         summary = generate_summary(chunk)
                         if summary:
                             summaries.append(summary)
@@ -171,51 +171,24 @@ def process_document():
 # Helper functions
 def extract_text_from_pdf(file):
     try:
-        with timeout(30):  # 30 second timeout for PDF processing
-            try:
-                # Try to read the file directly
-                pdf_reader = PdfReader(file)
-                text = ""
-                for page_num in range(len(pdf_reader.pages)):
-                    try:
-                        page_text = pdf_reader.pages[page_num].extract_text()
-                        if page_text:
-                            text += page_text.strip() + "\n"
-                    except Exception as e:
-                        print(f"Error extracting text from page {page_num}: {str(e)}")
-                        continue
-                
-                if not text.strip():
-                    return "No readable text found in PDF"
+        # Try to read the file directly
+        try:
+            text = pdf2text.extract_text(file)
+            if text and text.strip():
                 return text.strip()
-                
-            except Exception as e:
-                print(f"First attempt failed: {str(e)}")
-                
-                # If first attempt fails, try reading as bytes
-                try:
-                    pdf_reader = PdfReader(BytesIO(file.read()))
-                    text = ""
-                    for page_num in range(len(pdf_reader.pages)):
-                        try:
-                            page_text = pdf_reader.pages[page_num].extract_text()
-                            if page_text:
-                                text += page_text.strip() + "\n"
-                        except Exception as e:
-                            print(f"Error extracting text from page {page_num}: {str(e)}")
-                            continue
-                    
-                    if not text.strip():
-                        return "No readable text found in PDF"
-                    return text.strip()
-                    
-                except Exception as e:
-                    print(f"Second attempt failed: {str(e)}")
-                    raise
-                
-    except TimeoutException:
-        print("PDF processing timed out")
-        raise Exception("PDF processing took too long")
+        except Exception as e:
+            print(f"First attempt failed: {str(e)}")
+            
+        # If that fails, try reading as bytes
+        try:
+            text = pdf2text.extract_text(BytesIO(file.read()))
+            if text and text.strip():
+                return text.strip()
+        except Exception as e:
+            print(f"Second attempt failed: {str(e)}")
+            
+        return "No readable text found in PDF"
+        
     except Exception as e:
         print(f"PDF extraction error: {str(e)}")
         raise
