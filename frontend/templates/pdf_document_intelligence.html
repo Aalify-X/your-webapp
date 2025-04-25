@@ -130,99 +130,62 @@
 
 {% block scripts %}
 <script>
-    // Initialize API base URL
-    const API_BASE_URL = window.location.origin;
-
     async function processDocument() {
-    const fileInput = document.getElementById('file-input');
-    const loader = document.getElementById('loader');
-    const outputBox = document.getElementById('output-box');
-    const copySummaryBtn = document.getElementById('copy-summary');
-    const copyQuestionsBtn = document.getElementById('copy-questions');
-    const outputActions = document.querySelector('.output-actions');
-    const summaryLength = document.getElementById('summary-length').value;
-    const questionCount = document.getElementById('question-count').value;
+        const fileInput = document.getElementById('file-input');
+        const loader = document.getElementById('loader');
+        const outputBox = document.getElementById('output-box');
+        const copySummaryBtn = document.getElementById('copy-summary');
+        const copyQuestionsBtn = document.getElementById('copy-questions');
+        const outputActions = document.querySelector('.output-actions');
+        const summaryLength = document.getElementById('summary-length').value;
+        const questionCount = document.getElementById('question-count').value;
 
-    if (!fileInput.files[0]) {
-        alert('Please upload a PDF or Word document.');
-        return;
-    }
+        if (!fileInput.files[0]) {
+            alert('Please upload a PDF or Word document.');
+            return;
+        }
 
-    loader.style.display = 'block';
-    outputBox.style.display = 'none';
+        loader.style.display = 'block';
+        outputBox.style.display = 'none';
+        outputActions.style.display = 'none';
 
-    try {
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
         formData.append('summary_length', summaryLength);
         formData.append('question_count', questionCount);
 
-        const response = await fetch(`${API_BASE_URL}/api/process_document`, {
-            method: 'POST',
-            body: formData,
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json'
+        try {
+            const response = await fetch('/api/process_document', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to process document');
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const summaryOutput = document.getElementById('summary-output');
+            const questionsOutput = document.getElementById('questions-output');
+
+            summaryOutput.textContent = data.summary;
+            questionsOutput.innerHTML = data.questions.map(q => 
+                `<div class="question-item">
+                    <div class="question">${q.question}</div>
+                    <div class="answer">${q.answer}</div>
+                </div>`
+            ).join('');
+
+            loader.style.display = 'none';
+            outputBox.style.display = 'block';
+            outputActions.style.display = 'flex';
+            
+        } catch (error) {
+            loader.style.display = 'none';
+            alert(`Error: ${error.message}`);
         }
-
-        const data = await response.json();
-
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        const summaryHTML = `
-            <h3>Summary:</h3>
-            <p>${data.summary}</p>
-        `;
-        const questionsHTML = `
-            <h3>Questions:</h3>
-            <div class="questions-list">
-                ${data.questions.map(q => `
-                    <div class="question-item">
-                        <div class="question">Q: ${q.question}</div>
-                        <div class="answer">A: ${q.answer}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-
-        document.getElementById('summary-output').innerHTML = summaryHTML;
-        document.getElementById('questions-output').innerHTML = questionsHTML;
-
-        if (data.summary) {
-            copySummaryBtn.onclick = () => copyToClipboard(data.summary);
-        }
-        if (data.questions) {
-            copyQuestionsBtn.onclick = () =>
-                copyToClipboard(data.questions.map(q => `${q.question}\n${q.answer}`).join('\n\n'));
-        }
-
-        outputActions.style.display = 'block';
-
-    } catch (error) {
-        alert('Error: ' + error.message);
-        console.error('API Error:', error);
-    } finally {
-        loader.style.display = 'none';
-        outputBox.style.display = 'block';
     }
-}
-
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text)
-        .then(() => {
-            alert('Copied to clipboard!');
-        })
-        .catch(err => {
-            console.error('Failed to copy:', err);
-            alert('Failed to copy to clipboard');
-        });
-}
 </script>
 {% endblock %}

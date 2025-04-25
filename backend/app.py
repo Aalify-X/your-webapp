@@ -82,37 +82,46 @@ def pdf_tools():
 # Document processing
 @app.route('/api/process_document', methods=['POST'])
 def process_document():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files['file']
-    filename = secure_filename(file.filename)
-
-    summary_length = int(request.form.get('summary_length', 35))
-    question_count = int(request.form.get('question_count', 10))
-
     try:
-        if filename.endswith('.pdf'):
-            text = extract_text_from_pdf(file)
-        elif filename.endswith(('.doc', '.docx')):
-            text = extract_text_from_word(file)
-        else:
-            return jsonify({"error": "Unsupported file type"}), 400
+        if 'file' not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
 
-        if not text:
-            return jsonify({"error": "No readable text in file"}), 400
+        file = request.files['file']
+        filename = secure_filename(file.filename)
 
-        summary = generate_summary(text)
-        questions = generate_questions(text)
+        if not filename:
+            return jsonify({"error": "Invalid file"}), 400
 
-        return jsonify({
-            "summary": summary,
-            "questions": questions,
-            "status": "success"
-        })
+        summary_length = int(request.form.get('summary_length', 35))
+        question_count = int(request.form.get('question_count', 10))
+
+        try:
+            if filename.endswith('.pdf'):
+                text = extract_text_from_pdf(file)
+            elif filename.endswith(('.doc', '.docx')):
+                text = extract_text_from_word(file)
+            else:
+                return jsonify({"error": "Unsupported file type"}), 400
+
+            if not text or len(text.strip()) < 100:  # Check for meaningful text
+                return jsonify({"error": "No readable text in file"}), 400
+
+            summary = generate_summary(text)
+            questions = generate_questions(text)
+
+            return jsonify({
+                "summary": summary,
+                "questions": questions,
+                "status": "success"
+            })
+
+        except Exception as e:
+            print(f"Processing error: {str(e)}")
+            return jsonify({"error": f"Failed to process document: {str(e)}"}), 500
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"API error: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 # Helper functions
 def extract_text_from_pdf(file):
