@@ -1,8 +1,8 @@
 Flask
 Flask-Cors
-requests
+requests>=2.31.0
 gunicorn
 python-dotenv
 PyPDF2
 python-docx
-firebase-admin
+whop-sdk>=1.0.0

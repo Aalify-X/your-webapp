@@ -196,31 +196,6 @@
     <div class="content">
         {% block content %}{% endblock %}
     </div>
-
-    <!-- Firebase Configuration -->
-    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
-    <script>
-      // Your web app's Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIzaSyDz4pX1234567890",
-        authDomain: "progrify-881a2.firebaseapp.com",
-        projectId: "progrify-881a2",
-        storageBucket: "progrify-881a2.firebasestorage.app",
-        messagingSenderId: "53140925056",
-        appId: "1:53140925056:web:53fb4febd3c816cb675465"
-      };
-
-      // Initialize Firebase
-      firebase.initializeApp(firebaseConfig);
-    </script>
-
-    <!-- Email Modal -->
-    <div id="emailModal" style="display:none;">
-        <input type="email" id="emailInput" placeholder="Enter your email">
-        <button id="sendLink">Send Magic Link</button>
-    </div>
-
     {% block scripts %}{% endblock %}
 </body>
 </html>

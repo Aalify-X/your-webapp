@@ -1,9 +1,7 @@
 from flask import Flask, session, redirect, url_for, request, jsonify, render_template
 from flask_cors import CORS
-from auth.routes import auth_bp
 from functools import wraps
 import os
-import pdf2text
 from docx import Document
 import requests
 import io
@@ -17,10 +15,14 @@ from PyPDF2 import PdfReader
 
 load_dotenv()
 
-TEMPLATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/templates'))
-STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/static'))
+# Get absolute paths to templates and static folders
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, '../frontend/templates')
+STATIC_DIR = os.path.join(BASE_DIR, '../frontend/static')
 
-app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
+app = Flask(__name__, 
+            template_folder=TEMPLATE_DIR, 
+            static_folder=STATIC_DIR)
 
 # Use a fixed secret key for session persistence
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'NSjUyKL1$8N*@(i')
@@ -30,56 +32,107 @@ app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # Session lasts 30 days
 
 # Configure CORS
-CORS(app, origins=["https://your-frontend.onrender.com"],
-     supports_credentials=True)
+CORS(app, supports_credentials=True)
 
 # Set up session cookie settings
 app.config.update(
-    SESSION_COOKIE_SECURE=True,  # Only send cookie over HTTPS
-    SESSION_COOKIE_HTTPONLY=True,  # Prevent JavaScript access to cookie
-    SESSION_COOKIE_SAMESITE='Lax'  # Allow cross-site requests
+    SESSION_COOKIE_SECURE=False,  # Allow HTTP in development
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax'
 )
 
 # Set the port for Render
-app.config['PORT'] = int(os.getenv('PORT', 10000))
+app.config['PORT'] = int(os.getenv('PORT', 5000))
 
-# Register the auth blueprint
-app.register_blueprint(auth_bp)
-
-# Error handling
-@app.errorhandler(500)
-def internal_server_error(e):
-    return jsonify(error=str(e)), 500
-
-# Login required decorator
-def login_required(f):
+# Whop token verification decorator
+def whop_token_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('user'):
-            return redirect(url_for('auth.login'))
+        # Skip token verification in development
+        if os.getenv('FLASK_ENV') == 'development':
+            return f(*args, **kwargs)
+            
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({"error": "Authorization token missing"}), 401
+            
+        # Verify token with Whop API
+        try:
+            whop_response = requests.get(
+                "https://api.whop.com/api/v2/me",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            
+            if whop_response.status_code != 200:
+                return jsonify({"error": "Invalid Whop token"}), 401
+                
+            # Store user data in session if needed
+            user_data = whop_response.json()
+            session['whop_user'] = user_data
+            
+        except requests.exceptions.RequestException:
+            return jsonify({"error": "Failed to verify Whop token"}), 500
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Email required decorator
+def email_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'email' not in session:
+            return redirect(url_for('whop'))
         return f(*args, **kwargs)
     return decorated_function
 
 # Routes
 @app.route('/')
+@app.route('/whop')
+def whop():
+    app.jinja_env.cache = {}
+    return render_template('whop.html')
+
+
 @app.route('/index')
-@login_required
+@whop_token_required
 def index():
     return render_template('index.html')
 
-@app.route('/digital_planner')
+@app.route('/save_email', methods=['POST'])
+@whop_token_required
+def save_email():
+    email = request.form.get('email')
+    if email:
+        session['email'] = email
+        return redirect(url_for('index'))
+    return render_template('whop.html', error="Please enter a valid email.")
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('whop'))
+
+@app.route('/digitalplanner')
+@whop_token_required
+@email_required
 def digital_planner():
     return render_template('digital_planner.html')
 
 @app.route('/whiteboard')
+@whop_token_required
+@email_required
 def whiteboard():
     return render_template('whiteboard.html')
 
 @app.route('/flashcards')
+@whop_token_required
+@email_required
 def flashcards():
     return render_template('flashcards.html')
 
 @app.route('/pdf_tools')
+@whop_token_required
+@email_required
 def pdf_tools():
     return render_template('pdf_document_intelligence.html')
 
@@ -102,6 +155,8 @@ def timeout(seconds):
 
 # Document processing
 @app.route('/api/process_document', methods=['POST'])
+@whop_token_required
+@email_required
 def process_document():
     try:
         if 'file' not in request.files:
@@ -315,3 +370,4 @@ OPENROUTER_HEADERS = {
 if __name__ == '__main__':
     port = app.config['PORT']
     app.run(host='0.0.0.0', port=port)
+
