@@ -1,210 +1,682 @@
 {% extends "base.html" %}
 
-{% block title %}Advanced Document Assistant{% endblock %}
+{% block title %}DocGenius AI{% endblock %}
 
 {% block additional_styles %}
 <style>
+    :root {
+        --theme-color-light: rgba(255, 107, 107, 0.8);
+        --theme-color-dark: #FF6B6B;
+        --text-color: #333333;
+        --light-bg: #f9f9f9;
+        --card-bg: white;
+        --accent-color: #4ECDC4;
+    }
+    
     body {
-        font-family: var(--font-family, Arial, sans-serif);
-        background-color: var(--background-color, #f4f7f6);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--light-bg);
         margin: 0;
         padding: 0;
+        min-height: 100vh;
+        color: var(--text-color);
     }
+    
     .container {
         max-width: 900px;
-        margin: 50px auto;
+        margin: 30px auto;
         padding: 30px;
-        background-color: var(--card-background, white);
-        box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1);
-        border-radius: 10px;
+        background: var(--card-bg);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        border-radius: 15px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
     }
+    
     h1 {
         text-align: center;
-        color: var(--theme-color-dark, #4CAF50);
+        color: var(--theme-color-dark);
+        margin-bottom: 30px;
+        font-weight: 700;
     }
+    
     .input-section {
-        margin: 20px 0;
+        margin: 25px 0;
     }
-    input[type="file"] {
-        padding: 10px;
+    
+    .file-upload {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 30px;
+        border: 2px dashed #ccc;
+        border-radius: 10px;
+        transition: all 0.3s;
+        background: rgba(255, 255, 255, 0.7);
+    }
+    
+    .file-upload:hover {
+        border-color: var(--theme-color-dark);
+        background: rgba(255, 107, 107, 0.05);
+    }
+    
+    .file-upload i {
+        font-size: 48px;
+        color: var(--theme-color-dark);
+        margin-bottom: 15px;
+    }
+    
+    .file-upload label {
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--theme-color-dark);
+    }
+    
+    #document-file {
+        position: absolute;
+        opacity: 0;
         width: 100%;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 16px;
+        height: 100%;
+        top: 0;
+        left: 0;
+        cursor: pointer;
     }
+    
+    .file-name {
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #666;
+    }
+    
+    .slider-container {
+        margin: 30px 0;
+    }
+    
+    .slider-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    
+    .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 10px;
+        border-radius: 5px;
+        background: linear-gradient(to right, #e0e0e0, var(--theme-color-dark));
+        outline: none;
+    }
+    
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: var(--theme-color-dark);
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: all 0.2s;
+    }
+    
+    .slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+        background: var(--theme-color-light);
+    }
+    
     button {
-        padding: 12px 20px;
-        background-color: var(--theme-color-light, #4CAF50);
+        padding: 15px 30px;
+        background: linear-gradient(to right, var(--theme-color-light), var(--theme-color-dark));
         color: white;
         font-size: 18px;
+        font-weight: 600;
         border: none;
-        border-radius: 5px;
+        border-radius: 50px;
         cursor: pointer;
         width: 100%;
-        margin-top: 10px;
+        margin-top: 20px;
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
+    
     button:hover {
-        background-color: var(--theme-color-dark, #45a049);
+        transform: translateY(-3px);
+        box-shadow: 0 7px 20px rgba(255, 107, 107, 0.4);
     }
-    .output-box {
-        display: none;
-        margin-top: 30px;
-        padding: 20px;
-        background-color: #f1f1f1;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        overflow-y: scroll;
-        max-height: 300px;
+    
+    button:active {
+        transform: translateY(1px);
     }
-    .question-list {
-        padding-left: 20px;
-        margin-top: 15px;
-    }
-    .question-list li {
-        font-size: 16px;
-        line-height: 1.6;
-        margin: 5px 0;
-    }
+    
     .loader {
         display: none;
         text-align: center;
-        margin-top: 20px;
+        margin: 30px 0;
     }
-    .copy-btn {
-        background-color: #6c757d;
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        border-radius: 3px;
-        cursor: pointer;
-        margin-left: 10px;
-        font-size: 14px;
+    
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 107, 107, 0.2);
+        border-radius: 50%;
+        border-top-color: var(--theme-color-dark);
+        animation: spin 1s ease-in-out infinite;
+        margin: 0 auto 20px;
     }
-    .copy-btn:hover {
-        background-color: #5a6268;
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
-    .output-actions {
-        margin-top: 20px;
+    
+    .output-box {
         display: none;
+        margin-top: 30px;
+        padding: 25px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.05);
     }
-    .error-message {
-        color: red;
+    
+    .output-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .output-header h3 {
+        margin: 0;
+        color: var(--theme-color-dark);
+    }
+    
+    .copy-btn {
+        background: none;
+        border: none;
+        color: var(--accent-color);
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        padding: 5px 10px;
+        border-radius: 5px;
+        transition: all 0.2s;
+        width: auto;
+        box-shadow: none;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+    
+    .copy-btn:hover {
+        background: rgba(78, 205, 196, 0.1);
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .copy-btn i {
+        margin-right: 5px;
+    }
+    
+    .summary-points {
+        padding-left: 20px;
+    }
+    
+    .summary-points li {
+        margin-bottom: 10px;
+        line-height: 1.6;
+        position: relative;
+    }
+    
+    .summary-points li:before {
+        content: "•";
+        color: var(--theme-color-dark);
         font-weight: bold;
+        display: inline-block;
+        width: 1em;
+        margin-left: -1em;
     }
-
-    @media (max-width: 600px) {
-        .container {
-            padding: 20px;
-            margin: 20px auto;
-        }
+    
+    .question-list {
+        padding-left: 20px;
+    }
+    
+    .question-list li {
+        margin-bottom: 12px;
+        padding-left: 15px;
+        border-left: 3px solid var(--accent-color);
+        line-height: 1.5;
+    }
+    
+    .error {
+        color: #e74c3c;
+        margin-top: 15px;
+        padding: 10px;
+        background: rgba(231, 76, 60, 0.1);
+        border-radius: 5px;
+        text-align: center;
+    }
+    
+    .powered-by {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 0.8em;
+        color: #888;
+    }
+    
+    /* Animation for file upload */
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    .upload-animate {
+        animation: pulse 1.5s infinite;
     }
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1>Advanced Document Assistant</h1>
-
+    <h1>DocGenius AI</h1>
+    
     <div class="input-section">
-        <label for="file-input">Upload Your Document (PDF or Word):</label>
-        <input type="file" id="file-input" accept=".pdf,.doc,.docx" />
-        <label for="summary-length">Summary Length:</label>
-        <input type="number" id="summary-length" value="100">
-        <label for="question-count">Question Count:</label>
-        <input type="number" id="question-count" value="5">
+        <div class="file-upload" id="upload-area">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <label>Drag & Drop your PDF or click to browse</label>
+            <input type="file" id="document-file" accept=".pdf,.docx,.doc" />
+            <div class="file-name" id="file-name">No file selected</div>
+        </div>
     </div>
-
-    <button onclick="processDocument()">Generate Summary & Questions</button>
-
-    <div class="output-actions">
-        <button id="copy-summary" class="copy-btn">Copy Summary</button>
-        <button id="copy-questions" class="copy-btn">Copy Questions</button>
+    
+    <div class="slider-container">
+        <div class="slider-labels">
+            <span>Brief</span>
+            <span id="length-value">Detailed (10 key points)</span>
+            <span>Comprehensive</span>
+        </div>
+        <input type="range" min="5" max="50" value="10" class="slider" id="summary-length">
     </div>
-
+    
+    <div class="slider-container">
+        <div class="slider-labels">
+            <span>Few</span>
+            <span id="question-value">Standard (5 questions)</span>
+            <span>Many</span>
+        </div>
+        <input type="range" min="3" max="15" value="5" class="slider" id="question-count">
+    </div>
+    
+    <button onclick="processDocument()">
+        <i class="fas fa-magic"></i> Generate AI Summary & Questions
+    </button>
+    
     <div class="loader" id="loader">
-        <p>Loading... Please wait while we process your document.</p>
+        <div class="spinner"></div>
+        <p>Analyzing your document with AI...</p>
+        <p id="progress-text">Extracting text content</p>
     </div>
-
+    
+    <div id="error-message" class="error"></div>
+    
     <div class="output-box" id="output-box">
-        <div id="error-output" class="error-message" style="display:none"></div>
-        <div id="summary-output">No summary available.</div>
-        <div id="questions-output">No questions generated.</div>
+        <div class="output-header">
+            <h3><i class="fas fa-list-ul"></i> Key Points Summary</h3>
+            <button class="copy-btn" onclick="copyToClipboard('summary-output')">
+                <i class="far fa-copy"></i> Copy
+            </button>
+        </div>
+        <ol class="summary-points" id="summary-output"></ol>
+        
+        <div class="output-header" style="margin-top: 30px;">
+            <h3><i class="fas fa-question-circle"></i> Critical Questions</h3>
+            <button class="copy-btn" onclick="copyToClipboard('questions-output')">
+                <i class="far fa-copy"></i> Copy
+            </button>
+        </div>
+        <ul class="question-list" id="questions-output"></ul>
+    </div>
+    
+    <div class="powered-by">
+        Powered by advanced AI technology
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
 <script>
-    // Initialize API base URL
-    const API_BASE_URL = window.location.origin;
+    // Initialize PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+
+    // Update slider values
+    document.getElementById('summary-length').addEventListener('input', function() {
+        const value = this.value;
+        let text;
+        if (value <= 10) text = `Brief (${value} key points)`;
+        else if (value <= 30) text = `Detailed (${value} key points)`;
+        else text = `Comprehensive (${value} key points)`;
+        document.getElementById('length-value').textContent = text;
+    });
+    
+    document.getElementById('question-count').addEventListener('input', function() {
+        const value = this.value;
+        let text;
+        if (value <= 5) text = `Few (${value} questions)`;
+        else if (value <= 10) text = `Standard (${value} questions)`;
+        else text = `Many (${value} questions)`;
+        document.getElementById('question-value').textContent = text;
+    });
+
+    // File upload handling
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('document-file');
+    const fileName = document.getElementById('file-name');
+    
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            fileName.textContent = this.files[0].name;
+            uploadArea.classList.add('upload-animate');
+            setTimeout(() => uploadArea.classList.remove('upload-animate'), 1500);
+        } else {
+            fileName.textContent = 'No file selected';
+        }
+    });
+    
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--theme-color-dark)';
+        uploadArea.style.backgroundColor = 'rgba(255, 107, 107, 0.1)';
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = '#ccc';
+        uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#ccc';
+        uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+        
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            fileName.textContent = e.dataTransfer.files[0].name;
+            uploadArea.classList.add('upload-animate');
+            setTimeout(() => uploadArea.classList.remove('upload-animate'), 1500);
+        }
+    });
 
     async function processDocument() {
-        const fileInput = document.getElementById('file-input');
-        const loader = document.getElementById('loader');
+        const fileInput = document.getElementById('document-file');
+        const summaryLength = parseInt(document.getElementById('summary-length').value);
+        const questionCount = parseInt(document.getElementById('question-count').value);
         const outputBox = document.getElementById('output-box');
-        const copySummaryBtn = document.getElementById('copy-summary');
-        const copyQuestionsBtn = document.getElementById('copy-questions');
-        const outputActions = document.querySelector('.output-actions');
-        const summaryLength = document.getElementById('summary-length').value;
-        const questionCount = document.getElementById('question-count').value;
+        const loader = document.getElementById('loader');
+        const errorMsg = document.getElementById('error-message');
+        const progressText = document.getElementById('progress-text');
 
-        if (!fileInput.files[0]) {
-            alert('Please upload a PDF or Word document.');
-            return;
-        }
-
-        loader.style.display = 'block';
+        errorMsg.textContent = '';
         outputBox.style.display = 'none';
-        outputActions.style.display = 'none';
-
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        formData.append('summary_length', summaryLength);
-        formData.append('question_count', questionCount);
+        loader.style.display = 'block';
 
         try {
-            const response = await fetch('/api/process_document', {
-                method: 'POST',
-                body: formData,
-                credentials: 'include'
-            });
+            if (!fileInput.files[0]) {
+                throw new Error('Please upload a document first');
+            }
 
-            const text = await response.text();
-            let data;
+            progressText.textContent = 'Extracting text content...';
+            const file = fileInput.files[0];
+            let textContent = '';
+
+            if (file.name.endsWith('.pdf')) {
+                textContent = await extractTextFromPDF(file);
+            } else if (file.name.match(/\.docx?$/i)) {
+                textContent = await extractTextFromWord(file);
+            } else {
+                throw new Error('Unsupported file format. Please upload PDF or Word document.');
+            }
+
+            if (!textContent.trim()) {
+                throw new Error('The document appears to be empty or could not be read');
+            }
+
+            progressText.textContent = 'Generating AI summary...';
+            const summaryPoints = await generateSummaryPoints(textContent, summaryLength);
             
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                throw new Error(`Invalid response: ${text.substring(0, 100)}...`);
-            }
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to process document');
-            }
-
-            const summaryOutput = document.getElementById('summary-output');
-            const questionsOutput = document.getElementById('questions-output');
-
-            summaryOutput.textContent = data.summary || 'No summary available';
-            questionsOutput.innerHTML = data.questions ? data.questions.map(q => 
-                `<div class="question-item">
-                    <div class="question">${q.question}</div>
-                    <div class="answer">${q.answer}</div>
-                </div>`
-            ).join('') : 'No questions generated';
-
-            loader.style.display = 'none';
+            progressText.textContent = 'Generating critical questions...';
+            const questions = await generateCriticalQuestions(textContent, questionCount);
+            
+            displayResults(summaryPoints, questions);
             outputBox.style.display = 'block';
-            outputActions.style.display = 'flex';
-            
         } catch (error) {
-            const errorDiv = document.getElementById('error-output');
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = `Error: ${error.message}`;
+            errorMsg.textContent = error.message;
+            console.error(error);
+        } finally {
             loader.style.display = 'none';
-            outputBox.style.display = 'block';
-            console.error('API Error:', error);
         }
+    }
+
+    async function extractTextFromPDF(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                try {
+                    const pdfData = new Uint8Array(e.target.result);
+                    const pdf = await pdfjsLib.getDocument(pdfData).promise;
+                    let fullText = "";
+
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        fullText += textContent.items.map(item => item.str).join(' ') + "\n";
+                    }
+
+                    resolve(fullText);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    async function extractTextFromWord(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                mammoth.extractRawText({arrayBuffer: e.target.result})
+                    .then(result => resolve(result.value))
+                    .catch(error => reject(error));
+            };
+            
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    async function generateSummaryPoints(text, pointCount) {
+        // First clean and chunk the text
+        const cleanedText = cleanText(text);
+        const chunks = chunkText(cleanedText, 1500); // Process in chunks
+        
+        // Process each chunk to extract key points
+        let allPoints = [];
+        for (const chunk of chunks) {
+            const points = await extractKeyPointsFromChunk(chunk, Math.ceil(pointCount/3));
+            allPoints = allPoints.concat(points);
+        }
+        
+        // Deduplicate and select top points
+        const uniquePoints = [...new Set(allPoints)];
+        return uniquePoints.slice(0, pointCount);
+    }
+
+    function cleanText(text) {
+        // Remove excessive whitespace, special characters, etc.
+        return text.replace(/\s+/g, ' ')
+                  .replace(/[^\w\s.,;:!?()-]/g, '')
+                  .replace(/(\r\n|\n|\r)/gm, ' ')
+                  .trim();
+    }
+
+    function chunkText(text, maxLength) {
+        const chunks = [];
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+        
+        let currentChunk = '';
+        for (const sentence of sentences) {
+            if ((currentChunk + sentence).length > maxLength && currentChunk) {
+                chunks.push(currentChunk);
+                currentChunk = sentence;
+            } else {
+                currentChunk += ' ' + sentence;
+            }
+        }
+        if (currentChunk) chunks.push(currentChunk);
+        return chunks;
+    }
+
+    async function extractKeyPointsFromChunk(text, pointCount) {
+        // This is a simulated AI processing - in a real app you'd call an API here
+        // For demo purposes, we'll extract important sentences
+        
+        // Split into sentences
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+        
+        // Simple scoring based on sentence length and keywords
+        const scoredSentences = sentences.map(sentence => {
+            const words = sentence.split(/\s+/);
+            const lengthScore = Math.min(words.length / 10, 5); // Max 5 points for length
+            const keywordScore = containsImportantKeywords(sentence) ? 3 : 0;
+            return {
+                text: sentence.trim(),
+                score: lengthScore + keywordScore
+            };
+        });
+        
+        // Sort by score and take top sentences
+        return scoredSentences
+            .sort((a, b) => b.score - a.score)
+            .slice(0, pointCount)
+            .map(item => item.text);
+    }
+
+    function containsImportantKeywords(sentence) {
+        const keywords = ['important', 'key', 'summary', 'conclusion', 'result', 
+                         'findings', 'study', 'research', 'data', 'analysis',
+                         'however', 'therefore', 'thus', 'significantly'];
+        const lowerSentence = sentence.toLowerCase();
+        return keywords.some(keyword => lowerSentence.includes(keyword));
+    }
+
+    async function generateCriticalQuestions(text, questionCount) {
+        // This is a simulated AI processing - in a real app you'd call an API here
+        // For demo purposes, we'll generate questions based on key terms
+        
+        // Extract key terms
+        const keyTerms = extractKeyTerms(text, questionCount * 2);
+        
+        // Generate diverse questions
+        const questionTemplates = [
+            "How does {term} impact the overall findings?",
+            "What evidence supports the claims about {term}?",
+            "Why is {term} significant in this context?",
+            "What are the implications of {term}?",
+            "How might {term} be applied in practice?",
+            "What are the limitations of the approach to {term}?",
+            "How does {term} compare to alternative approaches?",
+            "What future research directions does {term} suggest?"
+        ];
+        
+        const questions = [];
+        for (let i = 0; i < questionCount && i < keyTerms.length; i++) {
+            const term = keyTerms[i];
+            const template = questionTemplates[i % questionTemplates.length];
+            questions.push(template.replace('{term}', term));
+        }
+        
+        return questions;
+    }
+
+    function extractKeyTerms(text, maxTerms) {
+        // Simple term extraction based on frequency
+        const words = text.toLowerCase().match(/\b[\w']+\b/g) || [];
+        const stopWords = new Set(['the', 'and', 'of', 'to', 'a', 'in', 'that', 'is', 'it', 'with']);
+        
+        const frequency = {};
+        words.forEach(word => {
+            if (!stopWords.has(word) && word.length > 3 && !/\d/.test(word)) {
+                frequency[word] = (frequency[word] || 0) + 1;
+            }
+        });
+        
+        return Object.entries(frequency)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, maxTerms)
+            .map(([term]) => term.charAt(0).toUpperCase() + term.slice(1));
+    }
+
+    function displayResults(summaryPoints, questions) {
+        const summaryOutput = document.getElementById('summary-output');
+        const questionsOutput = document.getElementById('questions-output');
+        
+        // Display summary points
+        summaryOutput.innerHTML = summaryPoints
+            .map(point => `<li>${point}</li>`)
+            .join('');
+        
+        // Display questions
+        questionsOutput.innerHTML = questions
+            .map(question => `<li>${question}</li>`)
+            .join('');
+    }
+
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const range = document.createRange();
+        range.selectNode(element);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        
+        try {
+            const successful = document.execCommand('copy');
+            const msg = successful ? 'Copied!' : 'Unable to copy';
+            showTooltip(event.target, msg);
+        } catch (err) {
+            showTooltip(event.target, 'Error copying');
+        }
+        
+        window.getSelection().removeAllRanges();
+    }
+
+    function showTooltip(element, message) {
+        const tooltip = document.createElement('div');
+        tooltip.textContent = message;
+        tooltip.style.position = 'absolute';
+        tooltip.style.backgroundColor = 'var(--text-color)';
+        tooltip.style.color = 'white';
+        tooltip.style.padding = '5px 10px';
+        tooltip.style.borderRadius = '4px';
+        tooltip.style.fontSize = '12px';
+        tooltip.style.zIndex = '100';
+        tooltip.style.top = (element.offsetTop - 30) + 'px';
+        tooltip.style.left = (element.offsetLeft + element.offsetWidth/2 - 30) + 'px';
+        
+        document.body.appendChild(tooltip);
+        
+        setTimeout(() => {
+            document.body.removeChild(tooltip);
+        }, 2000);
     }
 </script>
 {% endblock %}
