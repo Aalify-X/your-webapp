@@ -5,4 +5,8 @@ gunicorn
 python-dotenv
 PyPDF2
 python-docx
-whop-sdk>=1.0.0
+transformers==4.30.2
+torch==2.0.1
+huggingface_hub==0.16.4
+accelerate==0.20.3  # For model optimization
+whop>=1.0.0
